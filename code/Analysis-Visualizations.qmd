@@ -1,0 +1,261 @@
+---
+title: "Salt Marsh Vegetation at NCOS"
+author: "Macey Hartmann and Erick Morales Oyola"
+format: pdf
+---
+  
+# Guiding questions
+
+- Which dominant plant species characterize salt marsh habitat at NCOS?
+- How has the mean percent cover of the dominant salt marsh species changed across survey years?
+- How has the relative contribution of native and non-native vegetation changed across survey years?
+
+
+# 1. Set up
+
+## Packages
+
+```{r}
+#| label: packages
+
+# general use
+library(tidyverse)
+
+# file organization
+library(here)
+
+# data visualization
+library(patchwork)
+library(naniar)
+```
+
+
+
+## Data
+
+```{r}
+#| label: read-data
+
+veg <- read_csv(here("data", "veg.csv"))
+
+metadata <- read_csv(here("data", "vp_veg_metadata.csv"))
+```
+
+# 2. Cleaning and wrangling
+
+## Explore missingness
+
+```{r}
+#| label: missingness
+
+gg_miss_var(veg)
+```
+
+## Filter to salt marsh habitat and late summer/early fall surveys
+
+```{r}
+#| label: filter-saltmarsh
+
+saltmarsh <- veg |> 
+  # filter to salt marsh habitat only
+  filter(str_detect(habitat, "Salt Marsh") | str_detect(habitat, "Brackish Marsh")) |>
+  # parse date column and filter to August and September
+  mutate(date = as.Date(date),
+         month = month(date)) |> 
+  filter(month %in% c(8, 9))
+```
+
+## Fill implicit NAs with 0
+
+```{r}
+#| label: explicit-zeros
+saltmarsh_complete <- saltmarsh |> 
+  complete(year, transect_name, psoc, transect_distance,
+           fill = list(percent_cover = 0)) |> 
+  group_by(year, transect_name, psoc, cover_category) |> 
+  summarize(sum_pc = sum(percent_cover, na.rm = TRUE)) |> 
+  ungroup() |>
+  unite("year_pool", year, transect_name, remove = FALSE) |> 
+  left_join(metadata, by = "year_pool") |>
+  select(-year.y, -transect_name.y) |>
+  rename(year = year.x,
+         transect_name = transect_name.x) |>
+  mutate(mean_pc = sum_pc / num_quad)
+```
+
+## Filter to plant cover categories only
+
+```{r}
+#| label: filter-plant-cover
+
+saltmarsh_plants <- saltmarsh_complete |> 
+  filter(cover_category %in% c("NATIVE COVER", "NON-NATIVE COVER"))
+```
+
+
+# 3. Summarizing for each figure
+
+## Figure 3: Species rank (averaged across all years)
+
+```{r}
+#| label: summarize-species-rank
+
+species_rank <- saltmarsh_plants |> 
+  group_by(psoc, cover_category) |> 
+  summarize(mean_pc = mean(mean_pc, na.rm = TRUE)) |> 
+  ungroup() |> 
+  arrange(desc(mean_pc))
+
+# print to identify dominant species
+species_rank
+```
+
+
+## Figure 1: Dominant species by year
+
+```{r}
+#| label: identify-dominant-species
+
+# identify top 5 dominant species from species_rank
+dominant_species <- species_rank |> 
+  slice_max(mean_pc, n = 5) |> 
+  pull(psoc)
+
+# summarize dominant species cover by year
+dominant_by_year <- saltmarsh_plants |> 
+  mutate(psoc_grouped = if_else(psoc %in% dominant_species, psoc, "Other")) |> 
+  group_by(year, psoc_grouped, cover_category) |> 
+  summarize(mean_pc = mean(mean_pc, na.rm = TRUE)) |> 
+  ungroup()
+```
+
+## Figure 2: Native/non-native proportions by year
+
+```{r}
+#| label: summarize-native-nonnative
+
+native_nonnative <- saltmarsh_plants |> 
+  group_by(year, cover_category) |> 
+  summarize(mean_pc = mean(mean_pc, na.rm = TRUE)) |> 
+  ungroup() |> 
+  group_by(year) |> 
+  mutate(prop = mean_pc / sum(mean_pc)) |> 
+  ungroup()
+```
+
+## Figure 4: Total vegetation cover by year
+
+```{r}
+#| label: summarize-total-cover
+
+total_cover <- saltmarsh_plants |> 
+  group_by(year, transect_name) |> 
+  summarize(total_pc = sum(mean_pc, na.rm = TRUE)) |> 
+  ungroup() |> 
+  group_by(year) |> 
+  summarize(mean_total = mean(total_pc, na.rm = TRUE),
+            se_total = sd(total_pc, na.rm = TRUE) / sqrt(n())) |> 
+  ungroup()
+```
+
+# 4. Visualizations
+
+## Figure 1: Dominant species percent cover across survey years
+
+```{r}
+#| label: fig-dominant-species
+#| fig-cap: "Mean percent cover of dominant salt marsh plant species at NCOS across survey years. The top 5 species by mean cover across all years are shown; remaining species are grouped as Other. Colors indicate native (green) or non-native (coral) status."
+
+fig1 <- ggplot(data = dominant_by_year,
+               aes(x = year,
+                   y = mean_pc,
+                   fill = psoc_grouped)) +
+  geom_col(position = "stack") +
+  scale_fill_manual(values = c(
+    # placeholders — update with actual dominant species names after running
+    "Other" = "#B4B2A9"
+  )) +
+  labs(x = "Survey year",
+       y = "Mean percent cover (%)",
+       fill = "Species") +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.text = element_text(face = "italic"))
+
+fig1
+```
+
+## Figure 2: Proportional native vs. non-native cover across survey years
+
+```{r}
+#| label: fig-native-nonnative
+#| fig-cap: "Proportional contribution of native and non-native vegetation cover in salt marsh habitat at NCOS across survey years. Each bar sums to 1. Native cover is shown in green; non-native cover in coral."
+
+fig2 <- ggplot(data = native_nonnative,
+               aes(x = year,
+                   y = prop,
+                   fill = cover_category)) +
+  geom_col(position = "stack") +
+  scale_fill_manual(values = c("NATIVE COVER" = "#1D9E75",
+                                "NON-NATIVE COVER" = "#D85A30")) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(x = "Survey year",
+       y = "Proportion of vegetation cover",
+       fill = "Cover category") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+fig2
+```
+
+## Figure 3: Species rank plot
+
+```{r}
+#| label: fig-species-rank
+#| fig-cap: "Mean percent cover of plant species recorded in salt marsh habitat at NCOS, averaged across all survey years and ranked from highest to lowest. Green bars indicate native species; coral bars indicate non-native species. Dashed line marks the dominant species cutoff used in figure 1."
+
+fig3 <- ggplot(data = species_rank,
+               aes(x = mean_pc,
+                   y = reorder(psoc, mean_pc),
+                   fill = cover_category)) +
+  geom_col() +
+  geom_vline(xintercept = species_rank$mean_pc[5],
+             linetype = "dashed",
+             color = "gray50") +
+  scale_fill_manual(values = c("NATIVE COVER" = "#1D9E75",
+                                "NON-NATIVE COVER" = "#D85A30")) +
+  labs(x = "Mean percent cover (%)",
+       y = "Species",
+       fill = "Cover category") +
+  theme_minimal() +
+  theme(axis.text.y = element_text(face = "italic"),
+        legend.position = "bottom")
+
+fig3
+```
+
+## Figure 4: Total vegetation cover across survey years
+
+```{r}
+#| label: fig-total-cover
+#| fig-cap: "Total mean percent vegetation cover (native + non-native combined) in salt marsh habitat at NCOS across survey years. Shaded band represents ± 1 standard error around the mean."
+
+fig4 <- ggplot(data = total_cover,
+               aes(x = year,
+                   y = mean_total)) +
+  geom_ribbon(aes(ymin = mean_total - se_total,
+                  ymax = mean_total + se_total),
+              fill = "#1D9E75",
+              alpha = 0.2) +
+  geom_line(color = "#1D9E75",
+            linewidth = 1) +
+  geom_point(color = "#1D9E75",
+             size = 3) +
+  labs(x = "Survey year",
+       y = "Total mean percent cover (%)") +
+  theme_minimal()
+
+fig4
+```
+
+
