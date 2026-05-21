@@ -1,22 +1,23 @@
 ---
-title: "Salt Marsh Vegetation at NCOS"
+title: "Timeline Check In"
 author: "Macey Hartmann and Erick Morales Oyola"
-format: pdf
+date: "05-18-2026"
+format: 
+  pdf:
+    include-in-header: 
+       text: |
+         \usepackage{fvextra}
+         \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+         \DefineVerbatimEnvironment{OutputCode}{Verbatim}{breaklines,commandchars=\\\{\}}
+editor: source
+execute: 
+  message: false
+  warning: false
 ---
-  
-# Guiding questions
-
-- Which dominant plant species characterize salt marsh habitat at NCOS? (figure 3, showing the full species rank and identifying which species have the highest mean cover overall)
-- How has the mean percent cover of the dominant salt marsh species changed across survey years? (figure 1, showing top species' cover through time)
-- How has the relative contribution of native and non-native vegetation changed across survey years? (figure 2, showing native vs. non-native cover through time)
-
-
-# 1. Set up
-
-## Packages
 
 ```{r}
 #| label: packages
+#| echo: false
 
 # general use
 library(tidyverse)
@@ -30,32 +31,27 @@ library(naniar)
 ```
 
 
-
-## Data
-
 ```{r}
 #| label: read-data
+#| echo: false
 
 veg <- read_csv(here("data", "veg.csv"))
 
 metadata <- read_csv(here("data", "vp_veg_metadata.csv"))
 ```
 
-# 2. Cleaning and wrangling
-
-## Explore missingness
 
 ```{r}
 #| label: missingness
-
+#| echo: false
+#| include: false
 gg_miss_var(veg)
 ```
 
-## Filter to salt marsh habitat and late summer/early fall surveys
 
 ```{r}
 #| label: filter-saltmarsh
-
+#| echo: false
 saltmarsh <- veg |> 
   # filter to salt marsh habitat only
   filter(str_detect(habitat, "Salt Marsh") | str_detect(habitat, "Brackish Marsh")) |>
@@ -65,10 +61,10 @@ saltmarsh <- veg |>
   filter(month %in% c(8, 9))
 ```
 
-## Fill implicit NAs with 0
 
 ```{r}
 #| label: explicit-zeros
+#| echo: false
 saltmarsh_complete <- saltmarsh |> 
   complete(year, transect_name, psoc, transect_distance,
            fill = list(percent_cover = 0)) |> 
@@ -83,23 +79,18 @@ saltmarsh_complete <- saltmarsh |>
   mutate(mean_pc = sum_pc / num_quad)
 ```
 
-## Filter to plant cover categories only
 
 ```{r}
 #| label: filter-plant-cover
-
+#| echo: false
 saltmarsh_plants <- saltmarsh_complete |> 
   filter(cover_category %in% c("NATIVE COVER", "NON-NATIVE COVER"))
 ```
 
 
-# 3. Summarizing for each figure
-
-## Figure 3: Species rank (averaged across all years)
-
 ```{r}
 #| label: summarize-species-rank
-
+#| echo: false
 # summarize-species-rank — keep SE this time
 species_rank <- saltmarsh_plants |> 
   group_by(psoc, cover_category) |> 
@@ -114,12 +105,9 @@ species_rank_top20 <- species_rank |>
   slice_max(mean_pc, n = 20)
 ```
 
-
-## Figure 1: Dominant species by year
-
 ```{r}
 #| label: identify-dominant-species
-
+#| echo: false
 # identify top 5 dominant species from species_rank
 dominant_species <- species_rank |> 
   slice_max(mean_pc, n = 5) |> 
@@ -141,11 +129,10 @@ dominant_by_year <- saltmarsh_plants |>
   ungroup()
 ```
 
-## Figure 2: Native/non-native proportions by year
 
 ```{r}
 #| label: summarize-native-nonnative
-
+#| echo: false
 native_nonnative <- saltmarsh_plants |> 
   group_by(year, cover_category) |> 
   summarize(mean_pc = mean(mean_pc, na.rm = TRUE)) |> 
@@ -155,11 +142,10 @@ native_nonnative <- saltmarsh_plants |>
   ungroup()
 ```
 
-## Figure 4: Total vegetation cover by year
 
 ```{r}
 #| label: summarize-total-cover
-
+#| echo: false
 total_cover <- saltmarsh_plants |> 
   group_by(year, transect_name) |> 
   summarize(total_pc = sum(mean_pc, na.rm = TRUE)) |> 
@@ -170,9 +156,13 @@ total_cover <- saltmarsh_plants |>
   ungroup()
 ```
 
-# 4. Visualizations
+# Ideas for analysis and background
+## Should include some citations (not all) 
+## Should include ideas for analyses to answer questions and some preliminary code to run those analyses
 
-## Figure 1: Dominant species percent cover across survey years
+# Visualizations directly relevant to answering questions
+
+**Figure 1: Dominant species percent cover across survey years**
 
 ```{r}
 #| label: fig-dominant-species
@@ -206,7 +196,7 @@ fig1 <- ggplot(data = dominant_by_year,
 fig1
 ```
 
-## Figure 2: Proportional native vs. non-native cover across survey years
+**Figure 2: Proportional native vs. non-native cover across survey years**
 
 ```{r}
 #| label: fig-native-nonnative
@@ -233,7 +223,7 @@ fig2 <- ggplot(data = native_nonnative,
 fig2
 ```
 
-## Figure 3: Species rank plot
+**Figure 3: Species rank plot**
 
 ```{r}
 #| label: fig-species-rank
@@ -268,7 +258,9 @@ fig3 <- ggplot(data = species_rank_top20,
 fig3
 ```
 
-## Figure 4: Total vegetation cover across survey years
+# Other exploratory visualizations
+
+**Figure 4: Total vegetation cover across survey years**
 
 ```{r}
 #| label: fig-total-cover
@@ -295,5 +287,12 @@ fig4 <- ggplot(data = total_cover,
 
 fig4
 ```
+
+
+# Plan for elective (if completing)
+## Should include some description/image of drafts
+## Should include plan for making progress in the next two weeks
+
+
 
 
