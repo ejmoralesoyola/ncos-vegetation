@@ -15,6 +15,10 @@ execute:
   warning: false
 ---
 
+# Setup
+
+## Packages
+
 ```{r}
 #| label: packages
 #| echo: false
@@ -30,6 +34,7 @@ library(patchwork)
 library(naniar)
 ```
 
+## Data 
 
 ```{r}
 #| label: read-data
@@ -40,6 +45,15 @@ veg <- read_csv(here("data", "veg.csv"))
 metadata <- read_csv(here("data", "vp_veg_metadata.csv"))
 ```
 
+# Ideas for analysis and background 
+## Should include some citations (not all) 
+## Should include ideas for analyses to answer questions and some preliminary code to run those analyses
+
+## Ecological background
+
+## Planned analyses 
+
+## Data cleaning and wrangling
 
 ```{r}
 #| label: missingness
@@ -47,7 +61,6 @@ metadata <- read_csv(here("data", "vp_veg_metadata.csv"))
 #| include: false
 gg_miss_var(veg)
 ```
-
 
 ```{r}
 #| label: filter-saltmarsh
@@ -60,7 +73,6 @@ saltmarsh <- veg |>
          month = month(date)) |> 
   filter(month %in% c(8, 9))
 ```
-
 
 ```{r}
 #| label: explicit-zeros
@@ -79,7 +91,6 @@ saltmarsh_complete <- saltmarsh |>
   mutate(mean_pc = sum_pc / num_quad)
 ```
 
-
 ```{r}
 #| label: filter-plant-cover
 #| echo: false
@@ -87,6 +98,7 @@ saltmarsh_plants <- saltmarsh_complete |>
   filter(cover_category %in% c("NATIVE COVER", "NON-NATIVE COVER"))
 ```
 
+## Summaries for planned analyses
 
 ```{r}
 #| label: summarize-species-rank
@@ -129,7 +141,6 @@ dominant_by_year <- saltmarsh_plants |>
   ungroup()
 ```
 
-
 ```{r}
 #| label: summarize-native-nonnative
 #| echo: false
@@ -141,7 +152,6 @@ native_nonnative <- saltmarsh_plants |>
   mutate(prop = mean_pc / sum(mean_pc)) |> 
   ungroup()
 ```
-
 
 ```{r}
 #| label: summarize-total-cover
@@ -155,10 +165,6 @@ total_cover <- saltmarsh_plants |>
             se_total = sd(total_pc, na.rm = TRUE) / sqrt(n())) |> 
   ungroup()
 ```
-
-# Ideas for analysis and background
-## Should include some citations (not all) 
-## Should include ideas for analyses to answer questions and some preliminary code to run those analyses
 
 # Visualizations directly relevant to answering questions
 
@@ -288,11 +294,15 @@ fig4 <- ggplot(data = total_cover,
 fig4
 ```
 
-
 # Plan for elective (if completing)
-## Should include some description/image of drafts
-## Should include plan for making progress in the next two weeks
 
+## Elective concept 
+
+## Draft sections (include some description/image of drafts)
+
+## Plan for the next two weeks 
+
+# Next steps
 
 
 
