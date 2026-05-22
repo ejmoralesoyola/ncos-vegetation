@@ -1,0 +1,59 @@
+---
+title: "visualization-drafts"
+format: pdf
+---
+
+```{r}
+#| label: packages
+
+#Loading general use and cleaning packages
+library(tidyverse)
+library(here)
+library(janitor)
+
+#Loading color palette package
+library(NatParksPalettes)
+```
+
+
+```{r}
+#| label: data
+
+#Reading in vegetation survey data
+veg <- read_csv(here("data", "veg.csv"))
+
+#Reading in vegetation metadata
+veg_metadata <- read_csv(here("data", "vp_veg_metadata.csv"))
+```
+```{r}
+#| label: salt-marsh-dominant-species
+
+#Creating a dataset of dominant plant species in salt marsh habitat
+salt_marsh_dominant_species <- veg |>
+  #Cleaning column names
+  clean_names() |>
+  #Filtering to focus only on salt marsh habitat
+  filter(habitat == "Salt Marsh") |>
+  #Keeping only plant cover categories, not bare ground, thatch, or other cover
+  filter(cover_category %in% c("NATIVE COVER", "NON-NATIVE COVER")) |>
+  #Grouping by plant species and cover category
+  group_by(psoc, cover_category) |>
+  #Calculating total and mean percent cover for each species
+  summarize(total_percent_cover = sum(percent_cover, na.rm = TRUE),
+            mean_percent_cover = mean(percent_cover, na.rm = TRUE),
+            n_observations = n()) |>
+  #Ungrouping the dataframe
+  ungroup() |>
+  #Ordering species from highest to lowest total cover
+  arrange(desc(total_percent_cover)) |>
+  #Keeping the top 10 dominant species
+  slice_head(n = 10) |>
+  #Cleaning species names for the figure
+  mutate(species = str_replace_all(psoc, "_", " "),
+         species = str_to_sentence(species),
+         species = fct_reorder(species, total_percent_cover))
+
+#Displaying the summarized dominant species data
+salt_marsh_dominant_species
+```
+
