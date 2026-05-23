@@ -66,6 +66,16 @@ Native and non-native cover are also important to examine because restoration su
 
 ## Planned analyses 
 
+Our first analysis will identify which plant species most strongly characterize salt marsh and closely related brackish marsh vegetation at NCOS. To do this, we will summarize mean percent cover for each plant species across survey years and transects, then rank species from highest to lowest mean cover. This species-rank analysis will help us justify which species we classify as dominant rather than choosing them only from visual inspection.
+
+Our second analysis will examine how the top five dominant species change across survey years. After identifying the five species with the highest mean percent cover across the full filtered dataset, we will summarize their mean percent cover by year and visualize them with a stacked bar plot. In this figure, the y-axis represents the summed mean percent cover of only the top five dominant species, so bar height shows how much cover those dominant species contribute in each year.
+
+Our third analysis will focus specifically on non-native species in the filtered salt marsh/brackish marsh dataset. Rather than only comparing total native and non-native cover, we will identify the five non-native species with the highest mean percent cover across all survey years, then summarize their mean percent cover by year. We will visualize these species with a stacked bar plot so we can see whether non-native cover is being driven by the same species through time or whether different non-native plants become more important in different years. This analysis is useful because a simple native/non-native proportion plot can show the relative amount of non-native cover, but it does not show which species are responsible for that pattern. By focusing on the top non-native species, we can connect non-native cover to actual plant identities and better interpret whether non-native vegetation reflects a consistent community pattern, a temporary increase in a few species, or a shift in the plants contributing to marsh composition.
+
+Our fourth analysis will provide broader context by examining total vegetation cover across survey years. Unlike the dominant-species figure, this analysis includes all native and non-native plant species in the filtered salt marsh/brackish marsh dataset. We will summarize total mean vegetation cover by year and visualize it as a line plot with standard error, which will help us interpret whether changes in species composition are happening alongside broader increases or decreases in overall vegetation cover.
+
+Together, these analyses connect our figures to the main project questions. The species-rank plot identifies the plants that most strongly characterize the habitat, the dominant-species plot shows how the top five species change through time, the proportional native/non-native plot shows how plant origin contributes to habitat identity, and the dominant non-native species plot shows which non-native plants are driving non-native cover across survey years. The total-cover plot then provides broader context for overall vegetation development across the monitoring period.
+
 ## Data cleaning and wrangling
 
 ```{r}
@@ -205,6 +215,8 @@ total_cover <- saltmarsh_plants |>
 
 # Visualizations directly relevant to answering questions
 
+The following four figures directly address our project questions by connecting plant identity, cover, and origin through time. Figure 1 focuses on the five dominant plant species overall, Figure 2 compares the proportional contribution of native and non-native cover, Figure 3 examines which non-native species contribute most to non-native cover, and Figure 4 ranks the top species by mean cover to justify our dominant-species cutoff.
+
 **Figure 1: Dominant species percent cover across survey years**
 
 ```{r}
@@ -239,7 +251,7 @@ fig1 <- ggplot(data = dominant_by_year,
 fig1
 ```
 
-**Figure 2: Proportional native vs. non-native cover across survey years**
+**Figure 2: Proportional native and non-native cover across survey years**
 
 ```{r}
 #| label: fig-native-nonnative
@@ -297,7 +309,6 @@ fig_3 <- ggplot(data = top_nonnative_by_year,
 
 fig_3
 ```
-
 
 **Figure 4: Species rank plot**
 
@@ -366,12 +377,20 @@ fig5
 
 # Plan for elective (if completing)
 
+For our advanced elective, we plan to create an educational magazine about the salt marsh plants of North Campus Open Space. The magazine will translate our vegetation analysis into a more accessible and visual format for younger students and community members. Our goal is to introduce readers to the dominant plant species that characterize salt marsh habitat at NCOS while also explaining why salt marshes matter for restoration, wildlife habitat, and coastal resilience.
+
 ## Elective concept 
+
+The magazine will be inspired by educational nature magazines such as *National Geographic Kids*. It will include short species spotlight pages for the dominant salt marsh plants identified in our analysis, a simple explanation of native and non-native vegetation, and a data feature that communicates one of our main project figures in a more approachable way. We want the magazine to feel informative, visual, and welcoming for students who may not have much background in ecology.
 
 ## Draft sections (include some description/image of drafts)
 
 ## Plan for the next two weeks 
 
 # Next steps
+
+Our next steps are to refine the statistical analyses and continue revising the figures so our interpretations are clear and well-supported. For the final project, we will add more complete citations, connect our results more directly to NCOS restoration goals, and continue developing the advanced elective magazine alongside the data analysis.
+
+Before submission, we will make sure the GitHub repository includes the rendered PDF, the QMD, the data files, the bibliography file, and a README that clearly links to the rendered document.
 
 # References
