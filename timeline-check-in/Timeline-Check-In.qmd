@@ -78,6 +78,8 @@ Together, these analyses connect our figures to the main project questions. The 
 
 ## Data cleaning and wrangling
 
+We filtered the vegetation dataset to focus on salt marsh and closely related brackish marsh vegetation, then limited the surveys to August and September because late summer and early fall are when vegetation cover is expected to be highest and most comparable across years. We used `complete()` to make implicit absences explicit as zero percent cover, then joined the vegetation data with the metadata file so we could account for the number of quadrats sampled in each transect-year. Finally, we filtered to native and non-native plant cover categories so our analyses focused on vegetation rather than bare ground, thatch, or other non-plant cover types.
+
 ```{r}
 #| label: missingness
 #| echo: false
@@ -122,6 +124,8 @@ saltmarsh_plants <- saltmarsh_complete |>
 ```
 
 ## Summaries for planned analyses
+
+After cleaning the data, we created summary datasets for each planned figure. We ranked species by mean percent cover, identified the top five dominant species overall, identified the top five non-native species, summarized proportional native and non-native cover by year, and calculated total mean vegetation cover across survey years. These summaries allow us to connect each visualization directly to one of our project questions.
 
 ```{r}
 #| label: summarize-species-rank
