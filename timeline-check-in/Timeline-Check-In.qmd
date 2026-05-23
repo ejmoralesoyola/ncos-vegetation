@@ -175,12 +175,13 @@ dominant_by_year <- saltmarsh_plants |>
 ```{r}
 #| label: summarize-native-nonnative
 #| echo: true
-native_nonnative <- saltmarsh_plants |> 
-  group_by(year, cover_category) |> 
-  summarize(mean_pc = mean(mean_pc, na.rm = TRUE)) |> 
+native_nonnative_raw <- saltmarsh_plants |> 
+  group_by(year, transect_name, cover_category) |> 
+  summarize(total_pc = sum(mean_pc, na.rm = TRUE)) |> 
   ungroup() |> 
-  group_by(year) |> 
-  mutate(prop = mean_pc / sum(mean_pc)) |> 
+  group_by(year, cover_category) |> 
+  summarize(mean_cover = mean(total_pc, na.rm = TRUE),
+            se_cover = sd(total_pc, na.rm = TRUE) / sqrt(n())) |> 
   ungroup()
 ```
 
@@ -259,6 +260,8 @@ fig1 <- ggplot(data = dominant_by_year,
 fig1
 ```
 
+The original figure was unclear about what the y-axis represented. The wrangling approach was revised so that rather than averaging directly across all observations, we first calculated transect-level totals per species per year and then averaged those totals across transects. This ensures the y-axis represents true mean percent cover averaged across transects within each year, and bar height now varies across years. The "Other" category was also removed entirely so the figure shows only the five dominant species.
+
 **Figure 2: Proportional native and non-native cover across survey years**
 
 ```{r}
@@ -267,24 +270,36 @@ fig1
 #| warning: false
 #| fig-height: 6
 #| fig-width: 8
-#| fig-cap: "Proportional contribution of native and non-native vegetation cover in salt marsh habitat at NCOS across survey years. Each bar sums to 1. Native cover is shown in green; non-native cover in coral."
+#| fig-cap: "Mean percent cover (± 1 SE) of native and non-native vegetation in salt marsh habitat at NCOS across survey years. Points represent means and shaded bands represent ± 1 standard error. Native cover is shown in green; non-native cover in coral."
 
-fig2 <- ggplot(data = native_nonnative,
+fig2 <- ggplot(data = native_nonnative_raw,
                aes(x = year,
-                   y = prop,
+                   y = mean_cover,
+                   color = cover_category,
                    fill = cover_category)) +
-  geom_col(position = "stack") +
-  scale_fill_manual(values = c("NATIVE COVER" = "#1D9E75",
+  geom_ribbon(aes(ymin = mean_cover - se_cover,
+                  ymax = mean_cover + se_cover),
+              alpha = 0.2,
+              color = NA) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  scale_color_manual(values = c("NATIVE COVER" = "#1D9E75",
                                 "NON-NATIVE COVER" = "#D85A30")) +
-  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = c("NATIVE COVER" = "#1D9E75",
+                               "NON-NATIVE COVER" = "#D85A30")) +
+  scale_x_continuous(breaks = seq(2018, 2025, 1)) +
   labs(x = "Survey year",
-       y = "Proportion of vegetation cover",
+       y = "Mean percent cover (± 1 SE)",
+       color = "Cover category",
        fill = "Cover category") +
   theme_minimal() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom",
+        legend.title = element_text(face = "bold"))
 
 fig2
 ```
+
+The original proportional stacked bar was nearly identical to panel (b) of figure 9 in the NCOS monitoring report, making it redundant. We replaced it with a line plot showing raw mean percent cover of native and non-native vegetation over time, with ± 1 standard error ribbons around each line. This is distinct from the monitoring report because it uses a continuous line geometry that emphasizes temporal trend, places both cover categories on the same axis for direct visual comparison, and includes a measure of uncertainty that the monitoring report's bar charts do not show.
 
 **Figure 3: Dominant non-native species percent cover across survey years**
 
@@ -317,6 +332,7 @@ fig_3 <- ggplot(data = top_nonnative_by_year,
 
 fig_3
 ```
+
 
 **Figure 4: Species rank plot**
 
@@ -385,23 +401,34 @@ fig5
 
 # Plan for elective (if completing)
 
-For our advanced elective, we plan to create an educational magazine about the salt marsh plants of North Campus Open Space. The magazine will translate our vegetation analysis into a more accessible and visual format for younger students and community members. Our goal is to introduce readers to the dominant plant species that characterize salt marsh habitat at NCOS while also explaining why salt marshes matter for restoration, wildlife habitat, and coastal resilience.
+For our advanced elective, we are creating a National Geographic-inspired educational magazine about the salt marsh plants of the North Campus Open Space (NCOS). The magazine will translate our vegetation analysis into a more accessible and visual format for younger students and community members, introducing readers to the dominant plant species that characterize salt marsh habitat at NCOS while explaining why salt marshes matter for restoration, wildlife habitat, and coastal resilience. The magazine will be designed in Canva, printed in color at the dorm print facilities, and delivered to Ms. McCarter's fourth grade classroom with one copy per table group (approximately 3–4 copies total).
 
 ## Elective concept 
 
-The magazine will be inspired by educational nature magazines such as *National Geographic Kids*. It will include short species spotlight pages for the dominant salt marsh plants identified in our analysis, a simple explanation of native and non-native vegetation, and a data feature that communicates one of our main project figures in a more approachable way. We want the magazine to feel informative, visual, and welcoming for students who may not have much background in ecology.
+The magazine is inspired by educational nature publications such as *National Geographic Kids* and is designed for a fourth grade audience. It will include species spotlight pages profiling the dominant salt marsh plants with illustrated profiles, fun facts, and native/non-native status; a "Meet the Marsh" illustrated map of NCOS showing habitat zones; a data feature communicating our project findings in an accessible visual format; a "Native vs. Non-Native vs. Invasive" explanation page; a salt marsh vocabulary word search; a "What Plant Are You?" personality flowchart; and a how-to-get-involved page describing how students can visit and learn more about NCOS.
 
 ## Draft sections (include some description/image of drafts)
 
-Our magazine sections will include a short “Meet the Marsh” introduction that explains what salt marsh habitat is and why it matters at NCOS. We also plan to include a spotlight page for the dominant salt marsh plants identified in our analysis, featuring drawings, the species’ native or non-native status, and a brief description of its role in the marsh community.
+We have finalized the magazine structure, section outline, and visual style. Based on our preliminary data exploration, we have identified the dominant salt marsh species to feature: Salicornia pacifica, Distichlis spicata, Atriplex lentiformis, and Raphanus sativus. Each species will receive a spotlight page with a drawing or photograph, its native or non-native status, and a brief description of its role in the marsh community.
+For images, we will use Creative Commons licensed photographs from iNaturalist, Wikimedia Commons, and the USDA PLANTS Database, supplement with our own photographs taken at NCOS, and create original botanical-style illustrations for species that are difficult to photograph clearly.
 
-Our magazine will also include a “Native, Non-native, or Invasive?” page and a data visualization that translates one of our figures into a more accessible visual. We also want to include a final “How to Get Involved” page that connects younger students back to NCOS by explaining how they can visit, learn more, or care for restored coastal habitats in their own communities.
+![Cover page draft](images/cover.png)
+
+![Table of contents draft](images/table-of-contents.png)
+
+![Table of contents draft 2](images/tableofcontents2.png)
+
+![About page draft](images/about.png)
+
+![Word search draft](images/word-search.png)
+
+![Crossword draft](images/crossword.png)
 
 ## Plan for the next two weeks 
 
 Over the next two weeks, we will use our preliminary analysis to select the species featured in the magazine. We will also continue revising our figures so the main results are clear enough to translate into a more visual and accessible format for younger students and community readers.
 
-By Week 9, we hope to draft the species spotlight pages, begin the species drawings, and write the native/non-native explanation. We will also begin designing the magazine layout in Canva and deciding on a visual style that fits the salt marsh theme. By Week 10, we plan to complete the full magazine draft, revise the writing for clarity, and polish the layout so the final product is cohesive, educational, and visually engaging.
+By Week 9, we will have completed all remaining sections including the data feature, word search, flowchart, and how-to-get-involved page, and will have begun design and layout in Canva. By Week 10 we will finalize and polish the full magazine for presentation, revising the writing for clarity and ensuring the layout is cohesive and visually engaging. The completed magazine will be delivered to Ms. McCarter's classroom during finals week.
 
 # Next steps
 
