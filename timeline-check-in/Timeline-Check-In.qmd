@@ -167,6 +167,30 @@ native_nonnative <- saltmarsh_plants |>
 ```
 
 ```{r}
+#| label: summarize-top-nonnative-species
+#| echo: false
+
+top_nonnative_species <- saltmarsh_plants |>
+  filter(cover_category == "NON-NATIVE COVER") |>
+  group_by(psoc) |>
+  summarize(mean_pc = mean(mean_pc, na.rm = TRUE),
+            .groups = "drop") |>
+  slice_max(mean_pc, n = 5) |>
+  pull(psoc)
+
+#Summarizing top non-native species by year
+top_nonnative_by_year <- saltmarsh_plants |>
+  filter(cover_category == "NON-NATIVE COVER",
+         psoc %in% top_nonnative_species) |>
+  group_by(year, transect_name, psoc) |>
+  summarize(sum_pc = sum(mean_pc, na.rm = TRUE),
+            .groups = "drop") |>
+  group_by(year, psoc) |>
+  summarize(mean_pc = mean(sum_pc, na.rm = TRUE),
+            .groups = "drop")
+```
+
+```{r}
 #| label: summarize-total-cover
 #| echo: false
 total_cover <- saltmarsh_plants |> 
@@ -242,7 +266,40 @@ fig2 <- ggplot(data = native_nonnative,
 fig2
 ```
 
-**Figure 3: Species rank plot**
+**Figure 3: Dominant non-native species percent cover across survey years**
+
+```{r}
+#| label: fig-3-top-nonnative-species
+#| message: false
+#| warning: false
+#| fig-height: 6
+#| fig-width: 10
+#| fig-cap: "Mean percent cover of the five most common non-native plant species in the filtered salt marsh/brackish marsh dataset across survey years, averaged across transects within each year. Bar height reflects the summed mean cover of these non-native species in each year."
+
+#Creating a red/coral color palette for the top non-native species
+nonnative_palette <- c("#7F1D1D", "#B8322A", "#D85A30", "#E9825A", "#F3B49C")
+
+#Visualizing top non-native species over time
+fig_3 <- ggplot(data = top_nonnative_by_year,
+                        aes(x = year,
+                            y = mean_pc,
+                            fill = psoc)) +
+  geom_col(position = "stack") +
+  scale_fill_manual(values = nonnative_palette) +
+  scale_x_continuous(breaks = seq(2018, 2025, 1)) +
+  labs(x = "Survey year",
+       y = "Mean percent cover (%)",
+       fill = "Non-native species") +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        legend.text = element_text(face = "italic"),
+        legend.title = element_text(face = "bold"))
+
+fig_3
+```
+
+
+**Figure 4: Species rank plot**
 
 ```{r}
 #| label: fig-species-rank
@@ -255,7 +312,7 @@ fig2
 # fig3 — pointrange instead of col
 cutoff_x <- mean(c(species_rank$mean_pc[5], species_rank$mean_pc[6]))
 
-fig3 <- ggplot(data = species_rank_top20,
+fig4 <- ggplot(data = species_rank_top20,
                aes(x = mean_pc,
                    y = reorder(psoc, mean_pc),
                    color = cover_category)) +
@@ -274,12 +331,12 @@ fig3 <- ggplot(data = species_rank_top20,
         legend.position = "bottom",
         legend.title = element_text(face = "bold"))
 
-fig3
+fig4
 ```
 
 # Other exploratory visualizations
 
-**Figure 4: Total vegetation cover across survey years**
+**Figure 5: Total vegetation cover across survey years**
 
 ```{r}
 #| label: fig-total-cover
@@ -289,7 +346,7 @@ fig3
 #| fig-width: 8
 #| fig-cap: "Total mean percent vegetation cover (native + non-native combined) in salt marsh habitat at NCOS across survey years. Shaded band represents ± 1 standard error around the mean."
 
-fig4 <- ggplot(data = total_cover,
+fig5 <- ggplot(data = total_cover,
                aes(x = year,
                    y = mean_total)) +
   geom_ribbon(aes(ymin = mean_total - se_total,
@@ -304,7 +361,7 @@ fig4 <- ggplot(data = total_cover,
        y = "Total mean percent cover (%)") +
   theme_minimal()
 
-fig4
+fig5
 ```
 
 # Plan for elective (if completing)
