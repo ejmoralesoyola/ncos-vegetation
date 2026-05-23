@@ -58,6 +58,12 @@ Previous work on California wetland restoration has shown that vegetation establ
 
 ## Ecological background
 
+Salt marshes are dynamic coastal wetlands where plant communities exist at the edge of land and water. Their vegetation patterns are shaped by both physical stress and biological interactions, making them useful indicators of environmental conditions and restoration progress. In southern California, seasonal rainfall and dry summers can influence freshwater input, soil moisture, salinity, and plant growth, which may affect how vegetation cover changes from year to year [@ferren_1985].
+
+At NCOS, we expect dominant salt marsh species to include native salt-tolerant plants such as *Salicornia pacifica* and *Distichlis spicata*. The NCOS coastal salt marsh habitat page describes pickleweed as usually the dominant species in coastal salt marshes and also identifies saltgrass, alkali heath, fleshy jaumea, and California saltbush as characteristic salt marsh plants [@ncos_coastal_salt_marsh]. These expectations give us a useful ecological reference point for interpreting our data: if the restored salt marsh is developing toward a recognizable coastal salt marsh community, we would expect these native halophytes to contribute strongly to vegetation cover.
+
+Native and non-native cover are also important to examine because restoration success depends not only on whether plants are present, but on which plants are shaping the habitat. A marsh with high total vegetation cover may still be ecologically different depending on whether that cover is dominated by native salt marsh species or by non-native plants. NCOS monitoring reports describe vegetation cover, native biodiversity, and relative native cover as important indicators of restoration progress [@ncos_monitoring_2024]. Our project builds from that monitoring context by focusing more closely on the species-level patterns that contribute to salt marsh identity through time.
+
 ## Planned analyses 
 
 ## Data cleaning and wrangling
