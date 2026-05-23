@@ -1,6 +1,7 @@
 # ncos-vegetation
 
 # Repository Structure
+```
 ncos-vegetation/
 ├── code/
 │   ├── Analysis-Visualizations.qmd       # Main analysis and figures
@@ -24,3 +25,4 @@ ncos-vegetation/
     ├── Timeline-Check-In.qmd             # Progress check-in document
     ├── Timeline-Check-In.pdf             # Rendered check-in report
     └── references.bib                    # BibTeX references
+```
