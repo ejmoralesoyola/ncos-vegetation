@@ -1,7 +1,8 @@
 ---
 title: "Timeline Check In"
 author: "Macey Hartmann and Erick Morales Oyola"
-date: "05-18-2026"
+date: "22 May 2026"
+bibliography: references.bib
 format: 
   pdf:
     include-in-header: 
@@ -46,8 +47,14 @@ metadata <- read_csv(here("data", "vp_veg_metadata.csv"))
 ```
 
 # Ideas for analysis and background 
-## Should include some citations (not all) 
-## Should include ideas for analyses to answer questions and some preliminary code to run those analyses
+
+Our project focuses on salt marsh vegetation at North Campus Open Space (NCOS), with the goal of understanding which plant species characterize this restored wetland habitat and how those patterns have changed across survey years. Rather than treating vegetation cover as only a set of numbers, we are using percent cover to describe how the salt marsh is developing as a plant community over time. In this sense, our project asks how restoration becomes visible through the species that take root, persist, expand, or decline across the marsh.
+
+Salt marsh vegetation is especially useful for understanding restoration trajectory because these plant communities are shaped by strong environmental filters, including salinity, tidal flooding, saturated soils, and seasonal changes in water availability. In southern California salt marshes, native halophytes such as pickleweed (*Salicornia pacifica*) and saltgrass (*Distichlis spicata*) often help define the structure and identity of the habitat [@ferren_1985; @ncos_coastal_salt_marsh]. Because these species are adapted to stressful coastal wetland conditions, changes in their mean percent cover can help indicate whether the restored salt marsh is developing toward a recognizable native marsh community.
+
+This question is particularly relevant at NCOS because the site was restored from the former Ocean Meadows Golf Course into a mosaic of wetland and upland habitats, including salt marsh, brackish marsh, seasonal wetlands, and transitional habitats [@ncos_restoration_plan_2016; @ncos_monitoring_2024]. Broader NCOS monitoring reports evaluate restoration progress across habitat types, while our project narrows in on salt marsh vegetation specifically. By focusing on dominant species and native/non-native cover through time, we can connect the survey data to larger questions about restoration progress, habitat identity, and community development.
+
+Previous work on California wetland restoration has shown that vegetation establishment can be slow, variable, and strongly shaped by local site conditions such as elevation, soil salinity, soil moisture, planting, and adaptive management [@beheshti_2023]. This matters for our analysis because shifts in dominant plant cover are not just visual patterns in a graph. They may reflect ecological processes such as native plant establishment, non-native plant expansion, hydrologic change, disturbance, or interannual variability in rainfall and growing conditions.
 
 ## Ecological background
 
@@ -304,5 +311,4 @@ fig4
 
 # Next steps
 
-
-
+# References
