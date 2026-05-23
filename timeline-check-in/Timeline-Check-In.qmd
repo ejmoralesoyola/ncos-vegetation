@@ -86,14 +86,14 @@ We filtered the vegetation dataset to focus on salt marsh and closely related br
 
 ```{r}
 #| label: missingness
-#| echo: false
+#| echo: true
 #| include: false
 gg_miss_var(veg)
 ```
 
 ```{r}
 #| label: filter-saltmarsh
-#| echo: false
+#| echo: true
 saltmarsh <- veg |> 
   # filter to salt marsh habitat only
   filter(str_detect(habitat, "Salt Marsh") | str_detect(habitat, "Brackish Marsh")) |>
@@ -105,7 +105,7 @@ saltmarsh <- veg |>
 
 ```{r}
 #| label: explicit-zeros
-#| echo: false
+#| echo: true
 saltmarsh_complete <- saltmarsh |> 
   complete(year, transect_name, psoc, transect_distance,
            fill = list(percent_cover = 0)) |> 
@@ -122,7 +122,7 @@ saltmarsh_complete <- saltmarsh |>
 
 ```{r}
 #| label: filter-plant-cover
-#| echo: false
+#| echo: true
 saltmarsh_plants <- saltmarsh_complete |> 
   filter(cover_category %in% c("NATIVE COVER", "NON-NATIVE COVER"))
 ```
@@ -133,7 +133,7 @@ After cleaning the data, we created summary datasets for each planned figure. We
 
 ```{r}
 #| label: summarize-species-rank
-#| echo: false
+#| echo: true
 # summarize-species-rank — keep SE this time
 species_rank <- saltmarsh_plants |> 
   group_by(psoc, cover_category) |> 
@@ -150,7 +150,7 @@ species_rank_top20 <- species_rank |>
 
 ```{r}
 #| label: identify-dominant-species
-#| echo: false
+#| echo: true
 # identify top 5 dominant species from species_rank
 dominant_species <- species_rank |> 
   slice_max(mean_pc, n = 5) |> 
@@ -174,7 +174,7 @@ dominant_by_year <- saltmarsh_plants |>
 
 ```{r}
 #| label: summarize-native-nonnative
-#| echo: false
+#| echo: true
 native_nonnative <- saltmarsh_plants |> 
   group_by(year, cover_category) |> 
   summarize(mean_pc = mean(mean_pc, na.rm = TRUE)) |> 
@@ -186,7 +186,7 @@ native_nonnative <- saltmarsh_plants |>
 
 ```{r}
 #| label: summarize-top-nonnative-species
-#| echo: false
+#| echo: true
 
 top_nonnative_species <- saltmarsh_plants |>
   filter(cover_category == "NON-NATIVE COVER") |>
@@ -210,7 +210,7 @@ top_nonnative_by_year <- saltmarsh_plants |>
 
 ```{r}
 #| label: summarize-total-cover
-#| echo: false
+#| echo: true
 total_cover <- saltmarsh_plants |> 
   group_by(year, transect_name) |> 
   summarize(total_pc = sum(mean_pc, na.rm = TRUE)) |> 
@@ -393,7 +393,15 @@ The magazine will be inspired by educational nature magazines such as *National 
 
 ## Draft sections (include some description/image of drafts)
 
+Our magazine sections will include a short “Meet the Marsh” introduction that explains what salt marsh habitat is and why it matters at NCOS. We also plan to include a spotlight page for the dominant salt marsh plants identified in our analysis, featuring drawings, the species’ native or non-native status, and a brief description of its role in the marsh community.
+
+Our magazine will also include a “Native, Non-native, or Invasive?” page and a data visualization that translates one of our figures into a more accessible visual. We also want to include a final “How to Get Involved” page that connects younger students back to NCOS by explaining how they can visit, learn more, or care for restored coastal habitats in their own communities.
+
 ## Plan for the next two weeks 
+
+Over the next two weeks, we will use our preliminary analysis to select the species featured in the magazine. We will also continue revising our figures so the main results are clear enough to translate into a more visual and accessible format for younger students and community readers.
+
+By Week 9, we hope to draft the species spotlight pages, begin the species drawings, and write the native/non-native explanation. We will also begin designing the magazine layout in Canva and deciding on a visual style that fits the salt marsh theme. By Week 10, we plan to complete the full magazine draft, revise the writing for clarity, and polish the layout so the final product is cohesive, educational, and visually engaging.
 
 # Next steps
 
