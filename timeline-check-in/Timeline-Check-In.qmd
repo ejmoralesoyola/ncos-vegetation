@@ -20,6 +20,8 @@ execute:
 
 ## Packages
 
+We loaded packages for data wrangling, file organization, missing-data exploration, and visualization. The main workflow uses `tidyverse` for cleaning and summarizing vegetation data, `here` for file paths, and plotting packages for exploratory figures.
+
 ```{r}
 #| label: packages
 #| echo: false
@@ -36,6 +38,8 @@ library(naniar)
 ```
 
 ## Data 
+
+We used two vegetation datasets. The main dataset, `veg.csv`, contains vegetation survey observations, including species identity, percent cover, cover category, habitat type, transect, site, and year. The metadata file, `vp_veg_metadata.csv`, provides supporting information about vegetation transects, including the number of quadrats sampled within each transect-year.
 
 ```{r}
 #| label: read-data
