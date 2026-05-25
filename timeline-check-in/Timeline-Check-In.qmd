@@ -123,20 +123,27 @@ saltmarsh_complete <- saltmarsh |>
 ```{r}
 #| label: filter-plant-cover
 #| echo: true
+
+
 saltmarsh_plants <- saltmarsh_complete |> 
-  filter(cover_category %in% c("NATIVE COVER", "NON-NATIVE COVER"))
+  filter(cover_category %in% c("NATIVE COVER", "NON-NATIVE COVER")) |>
+  mutate(species_label = str_replace_all(psoc, "_", " "))
+
 ```
 
-## Summaries for planned analyses
+## Planned visualizations and descriptive analyses
 
-After cleaning the data, we created summary datasets for each planned figure. We ranked species by mean percent cover, identified the top five dominant species overall, identified the top five non-native species, summarized proportional native and non-native cover by year, and calculated total mean vegetation cover across survey years. These summaries allow us to connect each visualization directly to one of our project questions.
+For this stage of the project, our work focuses mainly on descriptive analyses and visualizations that help us understand salt marsh/brackish marsh vegetation patterns at NCOS. These summaries allow us to identify dominant species, compare native and non-native cover, and explore how vegetation cover changes across survey years. For the final project, we plan to add a simple statistical analysis using linear models to test whether vegetation cover changes through time.
+
+Our planned statistical analysis will use survey year as the explanatory variable and mean percent cover as the response variable. We will first test whether total mean vegetation cover changes across years, then consider separate statistical tests for native cover, non-native cover, or individual dominant species if the data structure supports those comparisons. These tests will help us move beyond visual interpretation by asking whether the patterns we see in the figures suggest directional changes in vegetation cover over the monitoring period.
 
 ```{r}
 #| label: summarize-species-rank
 #| echo: true
+
 # summarize-species-rank — keep SE this time
 species_rank <- saltmarsh_plants |> 
-  group_by(psoc, cover_category) |> 
+  group_by(psoc, species_label, cover_category) |> 
   summarize(mean_pc = mean(mean_pc, na.rm = TRUE),
             se_pc = sd(mean_pc, na.rm = TRUE) / sqrt(n()),
             n = n()) |> 
@@ -149,32 +156,49 @@ species_rank_top20 <- species_rank |>
 ```
 
 ```{r}
-#| label: identify-dominant-species
+#| label: dominant-species-cutoff
 #| echo: true
-# identify top 5 dominant species from species_rank
-dominant_species <- species_rank |> 
-  slice_max(mean_pc, n = 5) |> 
+
+#Calculating the 75th percentile of species mean percent cover
+dominance_cutoff <- quantile(species_rank$mean_pc,
+                             probs = 0.75,
+                             na.rm = TRUE)
+
+#Identifying dominant species as those at or above the 75th percentile
+dominant_species <- species_rank |>
+  filter(mean_pc >= dominance_cutoff) |>
   pull(psoc)
 
-# summarize dominant species cover by year — raw mean percent cover
-dominant_by_year <- saltmarsh_plants |> 
-  # label dominant species; group rest as Other
-  mutate(psoc_grouped = if_else(psoc %in% dominant_species, psoc, "Other")) |> 
-  # filter to only dominant species
-  filter(psoc_grouped != "Other") |>
-  # get transect-level totals per species per year first
-  group_by(year, transect_name, psoc_grouped, cover_category) |> 
+#Summarizing dominant species cover by year
+dominant_by_year <- saltmarsh_plants |>
+  #Keeping only species above the dominance cutoff
+  filter(psoc %in% dominant_species) |>
+  #Grouping by year, transect, species, and cover category
+  group_by(year, transect_name, psoc, species_label, cover_category) |>
+  #Calculating species cover within each transect-year
   summarize(sum_pc = sum(mean_pc, na.rm = TRUE)) |> 
-  ungroup() |> 
-  # then average across transects within each year and species
-  group_by(year, psoc_grouped, cover_category) |> 
+  ungroup() |>
+  #Averaging across transects within each year and species
+  group_by(year, psoc, species_label, cover_category) |>
   summarize(mean_pc = mean(sum_pc, na.rm = TRUE)) |> 
   ungroup()
+
+#Keeping the top 20 species for the rank plot
+species_rank_top20 <- species_rank |>
+  filter(n > 1) |>
+  slice_max(mean_pc, n = 20)
+
 ```
 
 ```{r}
 #| label: summarize-native-nonnative
 #| echo: true
+
+native_nonnative_points <- saltmarsh_plants |> 
+  group_by(year, transect_name, cover_category) |> 
+  summarize(total_pc = sum(mean_pc, na.rm = TRUE)) |> 
+  ungroup()
+
 native_nonnative_raw <- saltmarsh_plants |> 
   group_by(year, transect_name, cover_category) |> 
   summarize(total_pc = sum(mean_pc, na.rm = TRUE)) |> 
@@ -189,33 +213,41 @@ native_nonnative_raw <- saltmarsh_plants |>
 #| label: summarize-top-nonnative-species
 #| echo: true
 
+# Identifying the top five non-native species by mean percent cover
 top_nonnative_species <- saltmarsh_plants |>
   filter(cover_category == "NON-NATIVE COVER") |>
   group_by(psoc) |>
-  summarize(mean_pc = mean(mean_pc, na.rm = TRUE),
-            .groups = "drop") |>
+  summarize(mean_pc = mean(mean_pc, na.rm = TRUE)) |>
+  ungroup() |>
   slice_max(mean_pc, n = 5) |>
   pull(psoc)
 
-#Summarizing top non-native species by year
+# Summarizing top non-native species by year
 top_nonnative_by_year <- saltmarsh_plants |>
   filter(cover_category == "NON-NATIVE COVER",
          psoc %in% top_nonnative_species) |>
-  group_by(year, transect_name, psoc) |>
-  summarize(sum_pc = sum(mean_pc, na.rm = TRUE),
-            .groups = "drop") |>
-  group_by(year, psoc) |>
-  summarize(mean_pc = mean(sum_pc, na.rm = TRUE),
-            .groups = "drop")
+  mutate(species_label = str_replace_all(psoc, "_", " ")) |>
+  group_by(year, transect_name, psoc, species_label) |>
+  summarize(sum_pc = sum(mean_pc, na.rm = TRUE)) |>
+  ungroup() |>
+  group_by(year, psoc, species_label) |>
+  summarize(mean_pc = mean(sum_pc, na.rm = TRUE)) |>
+  ungroup()
+
 ```
 
 ```{r}
 #| label: summarize-total-cover
 #| echo: true
-total_cover <- saltmarsh_plants |> 
+
+#Creating transect-level total vegetation cover values
+total_cover_points <- saltmarsh_plants |> 
   group_by(year, transect_name) |> 
   summarize(total_pc = sum(mean_pc, na.rm = TRUE)) |> 
-  ungroup() |> 
+  ungroup()
+
+#Summarizing total vegetation cover by year
+total_cover <- total_cover_points |>
   group_by(year) |> 
   summarize(mean_total = mean(total_pc, na.rm = TRUE),
             se_total = sd(total_pc, na.rm = TRUE) / sqrt(n())) |> 
@@ -234,19 +266,19 @@ The following four figures directly address our project questions by connecting 
 #| warning: false
 #| fig-height: 6
 #| fig-width: 8
-#| fig-cap: "Mean percent cover of the five dominant salt marsh plant species at NCOS across survey years, averaged across transects within each year. Dominant species were identified as the top five by mean percent cover across all survey years. Bar height reflects total mean cover of the five dominant species and varies across years. Green shades indicate native species; coral indicates non-native species."
+#| fig-cap: "Mean percent cover of dominant salt marsh/brackish marsh plant species at NCOS across survey years, averaged across transects within each year. Dominant species were identified as species at or above the 75th percentile of mean percent cover across all survey years. Bar height reflects total mean cover of the dominant species and varies across years. Green shades indicate native species; coral indicates non-native species."
 
 fig1 <- ggplot(data = dominant_by_year,
                aes(x = year,
                    y = mean_pc,
-                   fill = psoc_grouped)) +
+                   fill = species_label)) +
   geom_col(position = "stack") +
   scale_fill_manual(values = c(
-  "Salicornia_pacifica"     = "#0D5E45",
-  "Distichlis_spicata"      = "#1D9E75",
-  "Atriplex_lentiformis"    = "#5DCAA5",
-  "Eleocharis_macrostachya" = "#A8DBC9",
-  "Raphanus_sativus"        = "#D85A30"
+  "Salicornia pacifica"     = "#0D5E45",
+  "Distichlis spicata"      = "#1D9E75",
+  "Atriplex lentiformis"    = "#5DCAA5",
+  "Eleocharis macrostachya" = "#A8DBC9",
+  "Raphanus sativus"        = "#D85A30"
 )) +
   scale_x_continuous(breaks = seq(2018, 2025, 1)) +
   labs(x = "Survey year",
@@ -277,6 +309,14 @@ fig2 <- ggplot(data = native_nonnative_raw,
                    y = mean_cover,
                    color = cover_category,
                    fill = cover_category)) +
+  geom_point(data = native_nonnative_points,
+             aes(x = year,
+                 y = total_pc,
+                 color = cover_category),
+             inherit.aes = FALSE,
+             alpha = 0.35,
+             size = 1.8,
+             position = position_jitter(width = 0.08, height = 0)) +
   geom_ribbon(aes(ymin = mean_cover - se_cover,
                   ymax = mean_cover + se_cover),
               alpha = 0.2,
@@ -318,7 +358,7 @@ nonnative_palette <- c("#7F1D1D", "#B8322A", "#D85A30", "#E9825A", "#F3B49C")
 fig_3 <- ggplot(data = top_nonnative_by_year,
                         aes(x = year,
                             y = mean_pc,
-                            fill = psoc)) +
+                            fill = species_label)) +
   geom_col(position = "stack") +
   scale_fill_manual(values = nonnative_palette) +
   scale_x_continuous(breaks = seq(2018, 2025, 1)) +
@@ -342,14 +382,14 @@ fig_3
 #| warning: false
 #| fig-height: 6
 #| fig-width: 8
-#| fig-cap: "Mean percent cover (± 1 SE) of the top 20 plant species recorded in salt marsh habitat at NCOS, averaged across transects and survey years and ranked from highest to lowest mean cover. Points represent means and horizontal bars represent ± 1 standard error. Green indicates native species; coral indicates non-native species. Dashed line marks the cutoff for the five dominant species visualized in figure 1."
+#| fig-cap: "Mean percent cover (± 1 SE) of the top 20 plant species recorded in the filtered salt marsh/brackish marsh dataset, averaged across transects and survey years and ranked from highest to lowest mean cover. Points represent means and horizontal bars represent ± 1 standard error. Green indicates native species; coral indicates non-native species. Dashed line marks the 75th percentile cutoff used to identify dominant species for figure 1."
 
-# fig3 — pointrange instead of col
-cutoff_x <- mean(c(species_rank$mean_pc[5], species_rank$mean_pc[6]))
+# fig4 — pointrange instead of col
+cutoff_x <- dominance_cutoff
 
 fig4 <- ggplot(data = species_rank_top20,
                aes(x = mean_pc,
-                   y = reorder(psoc, mean_pc),
+                   y = reorder(species_label, mean_pc),
                    color = cover_category)) +
   geom_pointrange(aes(xmin = mean_pc - se_pc,
                       xmax = mean_pc + se_pc)) +
@@ -369,6 +409,8 @@ fig4 <- ggplot(data = species_rank_top20,
 fig4
 ```
 
+The dashed line represents the 75th percentile of mean percent cover across all species in the filtered dataset. Species to the right of this line were classified as dominant because their average cover was higher than at least 75% of recorded plant species. This gives the dominant-species selection a clearer mathematical basis than choosing a visual cutoff by eye.
+
 # Other exploratory visualizations
 
 **Figure 5: Total vegetation cover across survey years**
@@ -384,13 +426,21 @@ fig4
 fig5 <- ggplot(data = total_cover,
                aes(x = year,
                    y = mean_total)) +
+  geom_point(data = total_cover_points,
+             aes(x = year,
+                 y = total_pc),
+             inherit.aes = FALSE,
+             alpha = 0.35,
+             size = 1.8,
+             position = position_jitter(width = 0.08, height = 0),
+             color = "#6B5B95") +
   geom_ribbon(aes(ymin = mean_total - se_total,
                   ymax = mean_total + se_total),
-              fill = "#1D9E75",
+              fill = "#6B5B95",
               alpha = 0.2) +
-  geom_line(color = "#1D9E75",
+  geom_line(color = "#6B5B95",
             linewidth = 1) +
-  geom_point(color = "#1D9E75",
+  geom_point(color = "#6B5B95",
              size = 3) +
   labs(x = "Survey year",
        y = "Total mean percent cover (%)") +
