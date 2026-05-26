@@ -26,13 +26,13 @@ We loaded packages for data wrangling, file organization, missing-data explorati
 #| label: packages
 #| echo: false
 
-# general use
+# Loading general use packages
 library(tidyverse)
 
-# file organization
+# File organization
 library(here)
 
-# data visualization
+# Data visualization
 library(patchwork)
 library(naniar)
 ```
@@ -45,6 +45,7 @@ We used two vegetation datasets. The main dataset, `veg.csv`, contains vegetatio
 #| label: read-data
 #| echo: false
 
+# Reading in vegetation survey data
 veg <- read_csv(here("data", "veg.csv"))
 
 metadata <- read_csv(here("data", "vp_veg_metadata.csv"))
@@ -94,6 +95,7 @@ gg_miss_var(veg)
 ```{r}
 #| label: filter-saltmarsh
 #| echo: true
+
 saltmarsh <- veg |> 
   # filter to salt marsh habitat only
   filter(str_detect(habitat, "Salt Marsh") | str_detect(habitat, "Brackish Marsh")) |>
@@ -106,6 +108,7 @@ saltmarsh <- veg |>
 ```{r}
 #| label: explicit-zeros
 #| echo: true
+
 saltmarsh_complete <- saltmarsh |> 
   complete(year, transect_name, psoc, transect_distance,
            fill = list(percent_cover = 0)) |> 
@@ -123,7 +126,6 @@ saltmarsh_complete <- saltmarsh |>
 ```{r}
 #| label: filter-plant-cover
 #| echo: true
-
 
 saltmarsh_plants <- saltmarsh_complete |> 
   filter(cover_category %in% c("NATIVE COVER", "NON-NATIVE COVER")) |>
@@ -161,7 +163,7 @@ species_rank_top20 <- species_rank |>
 
 #Calculating the 75th percentile of species mean percent cover
 dominance_cutoff <- quantile(species_rank$mean_pc,
-                             probs = 0.75,
+                             probs = 0.90,
                              na.rm = TRUE)
 
 #Identifying dominant species as those at or above the 75th percentile
