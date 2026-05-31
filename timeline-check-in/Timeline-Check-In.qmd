@@ -71,9 +71,9 @@ Native and non-native cover are also important to examine because restoration su
 
 ## Planned analyses 
 
-Our first analysis will identify which plant species most strongly characterize salt marsh and closely related brackish marsh vegetation at NCOS. To do this, we will summarize mean percent cover for each plant species across survey years and transects, then rank species from highest to lowest mean cover. This species-rank analysis will help us justify which species we classify as dominant rather than choosing them only from visual inspection.
+Our first analysis will identify which plant species most strongly characterize salt marsh and closely related brackish marsh vegetation at NCOS. To do this, we will summarize mean percent cover for each plant species across survey years and transects, then rank species from highest to lowest mean cover. We will use the 90th percentile of mean percent cover as a cutoff for identifying dominant species, which gives us a clearer mathematical basis than selecting species only by visual inspection.
 
-Our second analysis will examine how the top five dominant species change across survey years. After identifying the five species with the highest mean percent cover across the full filtered dataset, we will summarize their mean percent cover by year and visualize them with a stacked bar plot. In this figure, the y-axis represents the summed mean percent cover of only the top five dominant species, so bar height shows how much cover those dominant species contribute in each year.
+Our second analysis will examine how dominant species cover changes across survey years. After identifying species at or above the 90th percentile of mean percent cover across the full filtered dataset, we will summarize their mean percent cover by year and visualize them with a stacked bar plot. In this figure, the y-axis represents the summed mean percent cover of the dominant species in each survey year, so bar height shows how much cover those high-contributing species represent through time.
 
 Our third analysis will focus specifically on non-native species in the filtered salt marsh/brackish marsh dataset. Rather than only comparing total native and non-native cover, we will identify the five non-native species with the highest mean percent cover across all survey years, then summarize their mean percent cover by year. We will visualize these species with a stacked bar plot so we can see whether non-native cover is being driven by the same species through time or whether different non-native plants become more important in different years. This analysis is useful because a simple native/non-native proportion plot can show the relative amount of non-native cover, but it does not show which species are responsible for that pattern. By focusing on the top non-native species, we can connect non-native cover to actual plant identities and better interpret whether non-native vegetation reflects a consistent community pattern, a temporary increase in a few species, or a shift in the plants contributing to marsh composition.
 
@@ -171,6 +171,12 @@ dominant_species <- species_rank |>
   filter(mean_pc >= dominance_cutoff) |>
   pull(psoc)
 
+#Creating an ordered list of dominant species from highest to lowest mean cover
+dominant_species_order <- species_rank |>
+  filter(psoc %in% dominant_species) |>
+  arrange(desc(mean_pc)) |>
+  pull(species_label)
+
 #Summarizing dominant species cover by year
 dominant_by_year <- saltmarsh_plants |>
   #Keeping only species above the dominance cutoff
@@ -183,7 +189,10 @@ dominant_by_year <- saltmarsh_plants |>
   #Averaging across transects within each year and species
   group_by(year, psoc, species_label, cover_category) |>
   summarize(mean_pc = mean(sum_pc, na.rm = TRUE)) |> 
-  ungroup()
+  ungroup() |>
+  #Ordering species so highest-cover species appear at the bottom of the stacked bars
+  mutate(species_label = factor(species_label,
+                                levels = dominant_species_order))
 
 #Keeping the top 20 species for the rank plot
 species_rank_top20 <- species_rank |>
@@ -193,18 +202,19 @@ species_rank_top20 <- species_rank |>
 #Creating color palette for species within the 90th percentile
 species_rank_palette <- c(
   #Native species
-  "Salicornia pacifica"   = "#00441B",
-  "Distichlis spicata"    = "#238B45",
-  "Atriplex lentiformis"  = "#74C476",
-  "Distichlis littoralis" = "#006D2C",
-  "Suaeda taxifolia"      = "#41AB5D",
-  "Eleocharis macrostachya" = "#C4E8D9",
-  "Elymus triticoides"    = "#A1D99B",
-  "Isocoma menziesii"     = "#2CA25F",
-  "Frankenia salina"      = "#99D8C9",
+  "Salicornia pacifica"      = "#00441B",
+  "Distichlis spicata"       = "#238B45",
+  "Atriplex lentiformis"     = "#74C476",
+  "Distichlis littoralis"    = "#006D2C",
+  "Suaeda taxifolia"         = "#41AB5D",
+  "Eleocharis macrostachya"  = "#C4E8D9",
+  "Elymus triticoides"       = "#A1D99B",
+  "Isocoma menziesii"        = "#2CA25F",
+  "Frankenia salina"         = "#99D8C9",
+  
   #Non-native species
-  "Raphanus sativus"      = "#D85A30",
-  "Festuca perennis"      = "#B8322A"
+  "Raphanus sativus"         = "#D85A30",
+  "Festuca perennis"         = "#B8322A"
 )
 ```
 
@@ -231,7 +241,7 @@ native_nonnative_raw <- saltmarsh_plants |>
 #| label: summarize-top-nonnative-species
 #| echo: true
 
-# Identifying the top five non-native species by mean percent cover
+#Identifying the top five non-native species by mean percent cover
 top_nonnative_species <- saltmarsh_plants |>
   filter(cover_category == "NON-NATIVE COVER") |>
   group_by(psoc) |>
@@ -240,7 +250,7 @@ top_nonnative_species <- saltmarsh_plants |>
   slice_max(mean_pc, n = 5) |>
   pull(psoc)
 
-# Summarizing top non-native species by year
+#Summarizing top non-native species by year
 top_nonnative_by_year <- saltmarsh_plants |>
   filter(cover_category == "NON-NATIVE COVER",
          psoc %in% top_nonnative_species) |>
