@@ -161,12 +161,12 @@ species_rank_top20 <- species_rank |>
 #| label: dominant-species-cutoff
 #| echo: true
 
-#Calculating the 75th percentile of species mean percent cover
+#Calculating the 90th percentile of species mean percent cover
 dominance_cutoff <- quantile(species_rank$mean_pc,
                              probs = 0.90,
                              na.rm = TRUE)
 
-#Identifying dominant species as those at or above the 75th percentile
+#Identifying dominant species as those at or above the 90th percentile
 dominant_species <- species_rank |>
   filter(mean_pc >= dominance_cutoff) |>
   pull(psoc)
@@ -190,6 +190,22 @@ species_rank_top20 <- species_rank |>
   filter(n > 1) |>
   slice_max(mean_pc, n = 20)
 
+#Creating color palette for species within the 90th percentile
+species_rank_palette <- c(
+  #Native species
+  "Salicornia pacifica"   = "#00441B",
+  "Distichlis spicata"    = "#238B45",
+  "Atriplex lentiformis"  = "#74C476",
+  "Distichlis littoralis" = "#006D2C",
+  "Suaeda taxifolia"      = "#41AB5D",
+  "Eleocharis macrostachya" = "#C4E8D9",
+  "Elymus triticoides"    = "#A1D99B",
+  "Isocoma menziesii"     = "#2CA25F",
+  "Frankenia salina"      = "#99D8C9",
+  #Non-native species
+  "Raphanus sativus"      = "#D85A30",
+  "Festuca perennis"      = "#B8322A"
+)
 ```
 
 ```{r}
@@ -268,20 +284,14 @@ The following four figures directly address our project questions by connecting 
 #| warning: false
 #| fig-height: 6
 #| fig-width: 8
-#| fig-cap: "Mean percent cover of dominant salt marsh/brackish marsh plant species at NCOS across survey years, averaged across transects within each year. Dominant species were identified as species at or above the 75th percentile of mean percent cover across all survey years. Bar height reflects total mean cover of the dominant species and varies across years. Green shades indicate native species; coral indicates non-native species."
+#| fig-cap: "Mean percent cover of dominant salt marsh/brackish marsh plant species at NCOS across survey years, averaged across transects within each year. Dominant species were identified as species at or above the 90th percentile of mean percent cover across all survey years. Bar height reflects total mean cover of the dominant species and varies across years. Green shades indicate native species; coral indicates non-native species."
 
 fig1 <- ggplot(data = dominant_by_year,
                aes(x = year,
                    y = mean_pc,
                    fill = species_label)) +
   geom_col(position = "stack") +
-  scale_fill_manual(values = c(
-  "Salicornia pacifica"     = "#0D5E45",
-  "Distichlis spicata"      = "#1D9E75",
-  "Atriplex lentiformis"    = "#5DCAA5",
-  "Eleocharis macrostachya" = "#A8DBC9",
-  "Raphanus sativus"        = "#D85A30"
-)) +
+  scale_fill_manual(values = species_rank_palette) +
   scale_x_continuous(breaks = seq(2018, 2025, 1)) +
   labs(x = "Survey year",
        y = "Mean percent cover (%)",
@@ -384,7 +394,7 @@ fig_3
 #| warning: false
 #| fig-height: 6
 #| fig-width: 8
-#| fig-cap: "Mean percent cover (± 1 SE) of the top 20 plant species recorded in the filtered salt marsh/brackish marsh dataset, averaged across transects and survey years and ranked from highest to lowest mean cover. Points represent means and horizontal bars represent ± 1 standard error. Green indicates native species; coral indicates non-native species. Dashed line marks the 75th percentile cutoff used to identify dominant species for figure 1."
+#| fig-cap: "Mean percent cover (± 1 SE) of the top 20 plant species recorded in the filtered salt marsh/brackish marsh dataset, averaged across transects and survey years and ranked from highest to lowest mean cover. Points represent means and horizontal bars represent ± 1 standard error. Green indicates native species; coral indicates non-native species. Dashed line marks the 90th percentile cutoff used to identify dominant species for figure 1."
 
 # fig4 — pointrange instead of col
 cutoff_x <- dominance_cutoff
