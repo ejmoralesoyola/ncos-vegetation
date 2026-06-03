@@ -28,6 +28,7 @@ We loaded packages for data wrangling, file organization, missing-data explorati
 
 # Loading general use packages
 library(tidyverse)
+library(ggrepel)
 
 # File organization
 library(here)
@@ -71,7 +72,7 @@ Native and non-native cover are also important to examine because restoration su
 
 ## Planned analyses 
 
-Our first analysis will identify which plant species most strongly characterize salt marsh and closely related brackish marsh vegetation at NCOS. To do this, we will summarize mean percent cover for each plant species across survey years and transects, then rank species from highest to lowest mean cover. We will use the 90th percentile of mean percent cover as a cutoff for identifying dominant species, which gives us a clearer mathematical basis than selecting species only by visual inspection.
+Our first visualization will summarize which plant species most strongly characterize salt marsh and closely related brackish marsh vegetation at NCOS. To do this, we will summarize mean percent cover for each plant species across survey years and transects, then rank species from highest to lowest mean cover. We will use the 90th percentile of mean percent cover as a cutoff for identifying dominant species, which gives us a clearer mathematical basis than selecting species only by visual inspection.
 
 Our second analysis will examine how dominant species cover changes across survey years. After identifying species at or above the 90th percentile of mean percent cover across the full filtered dataset, we will summarize their mean percent cover by year and visualize them with a stacked bar plot. In this figure, the y-axis represents the summed mean percent cover of the dominant species in each survey year, so bar height shows how much cover those high-contributing species represent through time.
 
@@ -79,11 +80,11 @@ Our third analysis will focus specifically on non-native species in the filtered
 
 Our fourth analysis will provide broader context by examining total vegetation cover across survey years. Unlike the dominant-species figure, this analysis includes all native and non-native plant species in the filtered salt marsh/brackish marsh dataset. We will summarize total mean vegetation cover by year and visualize it as a line plot with standard error, which will help us interpret whether changes in species composition are happening alongside broader increases or decreases in overall vegetation cover.
 
-Together, these analyses connect our figures to the main project questions. The species-rank plot identifies the plants that most strongly characterize the habitat, the dominant-species plot shows how the top five species change through time, the proportional native/non-native plot shows how plant origin contributes to habitat identity, and the dominant non-native species plot shows which non-native plants are driving non-native cover across survey years. The total-cover plot then provides broader context for overall vegetation development across the monitoring period.
+Together, these visualizations connect our figures to the main project questions. The species-rank plot identifies the plants that most strongly characterize the habitat, the dominant-species plot shows how the top five species change through time, the proportional native/non-native plot shows how plant origin contributes to habitat identity, and the dominant non-native species plot shows which non-native plants are driving non-native cover across survey years. The total-cover plot then provides broader context for overall vegetation development across the monitoring period.
 
 ## Data cleaning and wrangling
 
-We filtered the vegetation dataset to focus on salt marsh and closely related brackish marsh vegetation, then limited the surveys to August and September because late summer and early fall are when vegetation cover is expected to be highest and most comparable across years. We used `complete()` to make implicit absences explicit as zero percent cover, then joined the vegetation data with the metadata file so we could account for the number of quadrats sampled in each transect-year. Finally, we filtered to native and non-native plant cover categories so our analyses focused on vegetation rather than bare ground, thatch, or other non-plant cover types.
+We filtered the vegetation dataset to focus on salt marsh and closely related brackish marsh vegetation, then limited the surveys to August and September because late summer and early fall are when vegetation cover is expected to be highest and most comparable across years. We used `complete()` to make implicit absences explicit as zero percent cover so that species not recorded in a given transect-year are treated as absent rather than missing (this matters for calculating accurate transect-level means). We then joined the vegetation data with the metadata file so we could account for the number of quadrats sampled in each transect-year when computing mean cover. Finally, we filtered to native and non-native plant cover categories so our analyses focused on vegetation rather than bare ground, thatch, or other non-plant cover types.
 
 ```{r}
 #| label: missingness
@@ -97,9 +98,10 @@ gg_miss_var(veg)
 #| echo: true
 
 saltmarsh <- veg |> 
-  # filter to salt marsh habitat only
+  # Filtering to salt marsh and brackish marsh because these habitat types share
+  # similar plant communities and together represent the core restored wetland area at NCOS
   filter(str_detect(habitat, "Salt Marsh") | str_detect(habitat, "Brackish Marsh")) |>
-  # parse date column and filter to August and September
+  # Restricting to August and September; late summer is when cover peaks and is most stable across years, reducing seasonal noise   in comparisons
   mutate(date = as.Date(date),
          month = month(date)) |> 
   filter(month %in% c(8, 9))
@@ -110,16 +112,23 @@ saltmarsh <- veg |>
 #| echo: true
 
 saltmarsh_complete <- saltmarsh |> 
+  # Using complete() to make implicit absences explicit: if a species was not
+  # recorded in a transect-year, it is assigned zero percent cover rather than
+  # being dropped from the dataset, which would inflate mean cover estimates
   complete(year, transect_name, psoc, transect_distance,
            fill = list(percent_cover = 0)) |> 
   group_by(year, transect_name, psoc, cover_category) |> 
   summarize(sum_pc = sum(percent_cover, na.rm = TRUE)) |> 
   ungroup() |>
+  # Creating a composite key to join vegetation data with quadrat metadata
   unite("year_pool", year, transect_name, remove = FALSE) |> 
   left_join(metadata, by = "year_pool") |>
   select(-year.y, -transect_name.y) |>
   rename(year = year.x,
          transect_name = transect_name.x) |>
+  # Dividing summed cover by the number of quadrats to get mean percent cover
+  # per quadrat within each transect-year, which accounts for variation in
+  # sampling effort across transects and years
   mutate(mean_pc = sum_pc / num_quad)
 ```
 
@@ -128,7 +137,11 @@ saltmarsh_complete <- saltmarsh |>
 #| echo: true
 
 saltmarsh_plants <- saltmarsh_complete |> 
+  # Keeping only native and non-native plant cover; removing bare ground, thatch,
+  # and other non-plant categories so all analyses focus on vegetation
   filter(cover_category %in% c("NATIVE COVER", "NON-NATIVE COVER")) |>
+  # Replacing underscores with spaces in species codes so names render cleanly
+  # in figure axes and legends without extra formatting steps
   mutate(species_label = str_replace_all(psoc, "_", " "))
 
 ```
@@ -143,17 +156,17 @@ Our planned statistical analysis will use survey year as the explanatory variabl
 #| label: summarize-species-rank
 #| echo: true
 
-#Creating a species-level summary table for the rank plot
+# Creating a species-level summary table for the rank plot
 species_rank <- saltmarsh_plants |> 
-  #Grouping by species and cover category so each species keeps its native/non-native status
+  # Grouping by species and cover category so each species keeps its native/non-native status
   group_by(psoc, species_label, cover_category) |> 
-  #Calculating mean percent cover, standard error, and sample size for each species
+  # Calculating mean percent cover, standard error, and sample size for each species
   summarize(mean_pc = mean(mean_pc, na.rm = TRUE),
             se_pc = sd(mean_pc, na.rm = TRUE) / sqrt(n()),
             n = n()) |> 
-  #Removing grouping so later steps do not accidentally stay grouped
+  # Removing grouping so later steps do not accidentally stay grouped
   ungroup() |> 
-  #Ordering species from highest to lowest mean percent cover
+  # Ordering species from highest to lowest mean percent cover
   arrange(desc(mean_pc))
 ```
 
@@ -161,7 +174,11 @@ species_rank <- saltmarsh_plants |>
 #| label: dominant-species-cutoff
 #| echo: true
 
-# Calculating the 90th percentile of species mean percent cover
+# Calculating the 90th percentile of species mean percent cover as the dominance threshold.
+# We chose the 90th percentile rather than a visual cutoff because it provides a
+# reproducible, data-driven criterion: only species whose average cover exceeds
+# 90% of all recorded species are classified as dominant. This threshold identifies
+# the highest-contributing species without arbitrarily inflating or deflating the set.
 dominance_cutoff <- quantile(species_rank$mean_pc,
                              probs = 0.90,
                              na.rm = TRUE)
@@ -172,12 +189,13 @@ dominant_species <- species_rank |>
   pull(psoc)
 
 # Creating a table that ranks dominant species from highest to lowest mean cover
+# for use in ordering the stacked bar plot legend and stack order
 dominant_species_order <- species_rank |>
   filter(psoc %in% dominant_species) |>
   arrange(desc(mean_pc)) |>
   select(psoc, species_label, overall_mean_pc = mean_pc)
 
-# Summarizing dominant species cover by year
+# Summarizing dominant species cover by year for Figure 1
 dominant_by_year <- saltmarsh_plants |>
   # Keeping only species at or above the 90th percentile cutoff
   filter(psoc %in% dominant_species) |>
@@ -186,24 +204,27 @@ dominant_by_year <- saltmarsh_plants |>
   # Calculating species cover within each transect-year
   summarize(sum_pc = sum(mean_pc, na.rm = TRUE)) |>
   ungroup() |>
-  # Averaging across transects within each year and species
+  # Averaging across transects within each year and species so that
+  # bar height reflects mean cover rather than summed cover across transects
   group_by(year, psoc, species_label, cover_category) |>
   summarize(mean_pc = mean(sum_pc, na.rm = TRUE)) |>
   ungroup() |>
   # Joining the overall species rank back into the plotting dataset
   left_join(dominant_species_order, by = c("psoc", "species_label")) |>
-  # Ordering species so the highest-cover species appears at the bottom of the stack
+  # Ordering species so the highest-cover species appears at the bottom of the stacked bar (most visually stable position)
   mutate(species_label = factor(species_label,
                                 levels = rev(dominant_species_order$species_label)))
 
-#Keeping the top 20 species for the rank plot
+# Keeping the top 20 species for the rank plot, excluding singletons (n > 1)
+# to avoid species with only one observation inflating apparent cover
 species_rank_top20 <- species_rank |>
   filter(n > 1) |>
   slice_max(mean_pc, n = 20)
 
-#Creating color palette for species within the 90th percentile
+# Creating a color palette for dominant species; green shades for natives,
+# coral/red shades for non-natives, to make origin immediately readable
 species_rank_palette <- c(
-  #Native species
+  # Native species
   "Salicornia pacifica"      = "#00441B",
   "Distichlis spicata"       = "#238B45",
   "Atriplex lentiformis"     = "#74C476",
@@ -214,7 +235,7 @@ species_rank_palette <- c(
   "Isocoma menziesii"        = "#2CA25F",
   "Frankenia salina"         = "#99D8C9",
   
-  #Non-native species
+  # Non-native species
   "Raphanus sativus"         = "#D85A30",
   "Festuca perennis"         = "#B8322A"
 )
@@ -224,6 +245,9 @@ species_rank_palette <- c(
 #| label: summarize-native-nonnative
 #| echo: true
 
+# Creating transect-level native and non-native cover totals for underlying points in Figure 2
+# Each row represents the total native or non-native cover within one transect-year,
+# which is what we plot as raw observations behind the yearly means
 native_nonnative_points <- saltmarsh_plants |>
   # Grouping by year, transect, and cover category to keep transect-level observations
   group_by(year, transect_name, cover_category) |>
@@ -231,12 +255,14 @@ native_nonnative_points <- saltmarsh_plants |>
   summarize(total_pc = sum(mean_pc, na.rm = TRUE)) |>
   ungroup()
 
+# Summarizing to yearly means and standard errors for the line and ribbon in Figure 2
 native_nonnative_raw <- saltmarsh_plants |>
-  # Starting with transect-level native and non-native cover values
+  # First collapsing to transect-level totals so each transect-year
+  # contributes one observation per cover category to the yearly mean
   group_by(year, transect_name, cover_category) |>
   summarize(total_pc = sum(mean_pc, na.rm = TRUE)) |>
   ungroup() |>
-  # Grouping by year and cover category to calculate yearly means
+  # Then averaging across transects within each year and cover category
   group_by(year, cover_category) |>
   # Calculating mean cover and standard error for each cover category in each year
   summarize(mean_cover = mean(total_pc, na.rm = TRUE),
@@ -248,7 +274,9 @@ native_nonnative_raw <- saltmarsh_plants |>
 #| label: summarize-top-nonnative-species
 #| echo: true
 
-#Identifying the five non-native species with the highest average cover
+# Identifying the five non-native species with the highest average cover across all years;
+# focusing on the top five keeps the stacked bar readable while capturing the species
+# most responsible for non-native cover patterns in the marsh
 top_nonnative_species <- saltmarsh_plants |>
   filter(cover_category == "NON-NATIVE COVER") |>
   group_by(psoc) |>
@@ -257,14 +285,16 @@ top_nonnative_species <- saltmarsh_plants |>
   slice_max(mean_pc, n = 5) |>
   pull(psoc)
 
-#Summarizing top non-native species by year
+# Summarizing top non-native species cover by year for Figure 3
 top_nonnative_by_year <- saltmarsh_plants |>
   filter(cover_category == "NON-NATIVE COVER",
          psoc %in% top_nonnative_species) |>
   mutate(species_label = str_replace_all(psoc, "_", " ")) |>
+  # First summarizing within transect-years
   group_by(year, transect_name, psoc, species_label) |>
   summarize(sum_pc = sum(mean_pc, na.rm = TRUE)) |>
   ungroup() |>
+  # Then averaging across transects within each year
   group_by(year, psoc, species_label) |>
   summarize(mean_pc = mean(sum_pc, na.rm = TRUE)) |>
   ungroup()
@@ -275,13 +305,14 @@ top_nonnative_by_year <- saltmarsh_plants |>
 #| label: summarize-total-cover
 #| echo: true
 
-# Creating transect-level total vegetation cover values for underlying points
+# Creating transect-level total vegetation cover values for the underlying
+# raw data points in Figure 5; each row is one transect-year observation
 total_cover_points <- saltmarsh_plants |>
   group_by(year, transect_name) |>
   summarize(total_pc = sum(mean_pc, na.rm = TRUE)) |>
   ungroup()
 
-# Summarizing total vegetation cover by year for the line and ribbon
+# Summarizing total vegetation cover by year for the line and ribbon in Figure 5
 total_cover <- total_cover_points |>
   group_by(year) |>
   summarize(mean_total = mean(total_pc, na.rm = TRUE),
@@ -291,7 +322,7 @@ total_cover <- total_cover_points |>
 
 # Visualizations directly relevant to answering questions
 
-The following four figures directly address our project questions by connecting plant identity, cover, and origin through time. Figure 1 focuses on the five dominant plant species overall, Figure 2 compares the proportional contribution of native and non-native cover, Figure 3 examines which non-native species contribute most to non-native cover, and Figure 4 ranks the top species by mean cover to justify our dominant-species cutoff.
+The following four figures directly address our project questions by connecting plant identity, cover, and origin through time. Figure 1 focuses on the dominant plant species overall, Figure 2 compares the contribution of native and non-native cover across years, Figure 3 examines which non-native species contribute most to non-native cover, and Figure 4 ranks the top species by mean cover to justify our dominant-species cutoff.
 
 **Figure 1: Dominant species percent cover across survey years**
 
@@ -303,37 +334,40 @@ The following four figures directly address our project questions by connecting 
 #| fig-width: 8
 #| fig-cap: "Mean percent cover of dominant salt marsh/brackish marsh plant species at NCOS across survey years, averaged across transects within each year. Dominant species were identified as species at or above the 90th percentile of mean percent cover across all survey years. Bar height reflects total mean cover of the dominant species and varies across years. Green shades indicate native species; coral indicates non-native species."
 
-#Creating Figure 1: dominant species cover across survey years
+# Creating Figure 1: dominant species cover across survey years as a stacked bar plot.
+# Stacking allows the total dominant-species cover and individual species contributions
+# to be read from the same figure.
 fig1 <- ggplot(data = dominant_by_year,
                aes(x = year,
                    y = mean_pc,
                    fill = species_label,
                    group = species_label)) +
-  #Creating stacked bars to show how dominant species contribute to cover each year
+  # Stacking bars so each color segment shows one dominant species' contribution
   geom_col(position = "stack") +
-  #Applying custom species colors and keeping the legend ordered from highest to lowest cover
+  # Applying custom species colors; breaks argument controls legend order
+  # so it matches the stacking order (highest cover at bottom)
   scale_fill_manual(values = species_rank_palette,
                     breaks = dominant_species_order$species_label) +
-  #Showing each survey year as its own x-axis break
+  # Showing each survey year as its own x-axis label
   scale_x_continuous(breaks = seq(2018, 2025, 1)) +
-  #Adding axis labels and legend title
+  # Adding axis labels and legend title
   labs(x = "Survey year",
        y = "Mean percent cover (%)",
        fill = "Species") +
-  #Using a clean theme for readability
+  # Using a clean theme for readability
   theme_minimal() +
-  #Formatting the legend and italicizing species names
+  # Formatting the legend and italicizing species names
   theme(legend.position = "bottom",
         legend.text = element_text(face = "italic"),
         legend.title = element_text(face = "bold"))
 
-#Displaying Figure 1
+# Displaying Figure 1
 fig1
 ```
 
 The original figure was unclear about what the y-axis represented, so we revised the wrangling approach to make the summary more interpretable. Rather than averaging directly across all observations, we first calculated transect-level totals for each dominant species within each year, then averaged those values across transects. This means the y-axis represents mean percent cover averaged across transects within each survey year, and bar height varies across years based on the summed cover of the dominant species. Dominant species were identified using the 90th percentile of mean percent cover across the full filtered dataset, rather than by visual inspection. The "Other" category was removed so the figure focuses only on species that met the dominant-species cutoff, and species are stacked within each year from highest to lowest mean cover.
 
-**Figure 2: Proportional native and non-native cover across survey years**
+**Figure 2: Native and non-native cover across survey years**
 
 ```{r}
 #| label: fig-native-nonnative
@@ -341,16 +375,27 @@ The original figure was unclear about what the y-axis represented, so we revised
 #| warning: false
 #| fig-height: 6
 #| fig-width: 8
-#| fig-cap: "Mean percent cover (± 1 SE) of native and non-native vegetation in salt marsh habitat at NCOS across survey years. Points represent means and shaded bands represent ± 1 standard error. Native cover is shown in green; non-native cover in coral."
+#| fig-cap: "Mean percent cover (± 1 SE) of native and non-native vegetation in salt marsh habitat at NCOS across survey years. Faint points show transect-level observations (one point per transect-year per cover category); lines connect yearly means; shaded bands represent ± 1 standard error. Cover categories are labeled directly on the figure. Native cover is shown in green; non-native cover in coral."
 
-#Creating Figure 2: native and non-native vegetation cover across survey years
+# Creating Figure 2: native and non-native vegetation cover over time.
+# Using a line plot rather than stacked bars to emphasize temporal trend and
+# allow both categories to share the same axis for direct comparison.
+
+# First, creating a label dataset with the last year's values for direct labeling
+fig2_labels <- native_nonnative_raw |>
+  group_by(cover_category) |>
+  filter(year == max(year)) |>
+  ungroup() |>
+  # Cleaning up the cover category text for display
+  mutate(label = str_to_title(str_replace(cover_category, " COVER", "")))
+
 fig2 <- ggplot(data = native_nonnative_raw,
                aes(x = year,
                    y = mean_cover,
                    color = cover_category,
                    fill = cover_category)) +
-  #Adding faint points to show the underlying transect-level observations
-  #Each point represents total native or non-native cover within one transect-year
+  # Faint jittered points show the underlying transect-level observations;
+  # each point is one transect-year total for that cover category
   geom_point(data = native_nonnative_points,
              aes(x = year,
                  y = total_pc,
@@ -359,39 +404,45 @@ fig2 <- ggplot(data = native_nonnative_raw,
              alpha = 0.35,
              size = 1.8,
              position = position_jitter(width = 0.08, height = 0)) +
-  #Adding shaded ribbons to show ± 1 standard error around each yearly mean
+  # Shaded ribbons show ± 1 SE around each yearly mean
   geom_ribbon(aes(ymin = mean_cover - se_cover,
                   ymax = mean_cover + se_cover),
               alpha = 0.2,
               color = NA) +
-  #Adding lines to connect yearly mean percent cover values through time
+  # Lines connect yearly means to show temporal trend
   geom_line(linewidth = 1) +
-  #Adding larger points to show the yearly mean percent cover values
+  # Larger points mark the yearly mean values
   geom_point(size = 3) +
-  #Using green for native cover and coral/red for non-native cover
-  scale_color_manual(values = c("NATIVE COVER" = "#1D9E75",
+  # Direct labels at the end of each line using ggrepel to avoid overlap
+  geom_label_repel(data = fig2_labels,
+                   aes(x = year,
+                       y = mean_cover,
+                       label = label,
+                       color = cover_category),
+                   inherit.aes = FALSE,
+                   nudge_x = 0.3,
+                   hjust = 0,
+                   size = 3.5,
+                   fontface = "bold",
+                   show.legend = FALSE) +
+  scale_color_manual(values = c("NATIVE COVER"     = "#1D9E75",
                                 "NON-NATIVE COVER" = "#D85A30")) +
-  #Matching the ribbon fill colors to the line and point colors
-  scale_fill_manual(values = c("NATIVE COVER" = "#1D9E75",
-                               "NON-NATIVE COVER" = "#D85A30")) +
-  #Showing each survey year as its own x-axis break
-  scale_x_continuous(breaks = seq(2018, 2025, 1)) +
-  #Adding axis labels and legend titles
+  scale_fill_manual(values  = c("NATIVE COVER"     = "#1D9E75",
+                                "NON-NATIVE COVER" = "#D85A30")) +
+  scale_x_continuous(breaks = seq(2018, 2025, 1),
+                     # Expanding right side slightly to make room for direct labels
+                     expand = expansion(mult = c(0.02, 0.15))) +
   labs(x = "Survey year",
-       y = "Mean percent cover (± 1 SE)",
-       color = "Cover category",
-       fill = "Cover category") +
-  #Using a clean theme for readability
+       y = "Mean percent cover (± 1 SE)") +
   theme_minimal() +
-  #Moving the legend below the plot and bolding the legend title
-  theme(legend.position = "bottom",
-        legend.title = element_text(face = "bold"))
+  # Removing legend since cover categories are labeled directly on the figure
+  theme(legend.position = "none")
 
-#Displaying Figure 2
+# Displaying figure 2
 fig2
 ```
 
-The original proportional stacked bar was nearly identical to panel (b) of figure 9 in the NCOS monitoring report, making it redundant. We replaced it with a line plot showing raw mean percent cover of native and non-native vegetation over time, with ± 1 standard error ribbons around each line. This is distinct from the monitoring report because it uses a continuous line geometry that emphasizes temporal trend, places both cover categories on the same axis for direct visual comparison, and includes a measure of uncertainty that the monitoring report's bar charts do not show.
+The original proportional stacked bar was nearly identical to panel (b) of figure 9 in the NCOS monitoring report, making it redundant. We replaced it with a line plot showing raw mean percent cover of native and non-native vegetation over time, with ± 1 standard error ribbons around each line and faint transect-level points showing the underlying observations. Cover categories are labeled directly on the figure with `ggrepel` to reduce the processing load of matching a legend. This is distinct from the monitoring report because it uses a continuous line geometry that emphasizes temporal trend, places both cover categories on the same axis for direct visual comparison, and includes a measure of uncertainty that the monitoring report's bar charts do not show.
 
 **Figure 3: Dominant non-native species percent cover across survey years**
 
@@ -401,10 +452,11 @@ The original proportional stacked bar was nearly identical to panel (b) of figur
 #| warning: false
 #| fig-height: 6
 #| fig-width: 10
-#| fig-cap: "Mean percent cover of the five most common non-native plant species in the filtered salt marsh/brackish marsh dataset across survey years, averaged across transects within each year. Bar height reflects the summed mean cover of these non-native species in each year."
+#| fig-cap: "Mean percent cover of the five most common non-native plant species in the filtered salt marsh/brackish marsh dataset across survey years, averaged across transects within each year. Bar height reflects the summed mean cover of these non-native species in each year. Species were selected as the five with the highest mean percent cover across all survey years."
 
-# Creating a red/coral color palette for the top non-native species
-# Each color corresponds to one of the five highest-cover non-native species
+# Creating a red/coral color palette for the top non-native species;
+# using a single hue family (red to light coral) distinguishes these species from
+# the green native palette while keeping all non-native species visually grouped
 nonnative_palette <- c("#7F1D1D", "#B8322A", "#D85A30", "#E9825A", "#F3B49C")
 
 # Creating Figure 3: top non-native species cover across survey years
@@ -412,24 +464,19 @@ fig_3 <- ggplot(data = top_nonnative_by_year,
                 aes(x = year,
                     y = mean_pc,
                     fill = species_label)) +
-  # Creating stacked bars to show how the top non-native species contribute to cover each year
+  # Stacked bars show combined non-native cover and each species' contribution
   geom_col(position = "stack") +
-  # Applying the custom red/coral palette to distinguish non-native species
   scale_fill_manual(values = nonnative_palette) +
-  # Showing each survey year as its own x-axis break
   scale_x_continuous(breaks = seq(2018, 2025, 1)) +
-  # Adding axis labels and legend title
   labs(x = "Survey year",
        y = "Mean percent cover (%)",
        fill = "Non-native species") +
-  # Using a clean theme for readability
   theme_minimal() +
-  # Moving the legend below the plot and italicizing species names
   theme(legend.position = "bottom",
         legend.text = element_text(face = "italic"),
         legend.title = element_text(face = "bold"))
 
-# Displaying Figure 3
+# displaying figure 3
 fig_3
 ```
 
@@ -442,46 +489,58 @@ fig_3
 #| warning: false
 #| fig-height: 6
 #| fig-width: 8
-#| fig-cap: "Mean percent cover (± 1 SE) of the top 20 plant species recorded in the filtered salt marsh/brackish marsh dataset, averaged across transects and survey years and ranked from highest to lowest mean cover. Points represent means and horizontal bars represent ± 1 standard error. Green indicates native species; coral indicates non-native species. Dashed line marks the 90th percentile cutoff used to identify dominant species for figure 1."
+#| fig-cap: "Mean percent cover (± 1 SE) of the top 20 plant species recorded in the filtered salt marsh/brackish marsh dataset, averaged across transects and survey years and ranked from highest to lowest mean cover. Faint points show individual transect-year observations for each species. Points on the pointrange show means; horizontal bars show ± 1 standard error. Green indicates native species; coral indicates non-native species. Dashed line marks the 90th percentile cutoff used to identify dominant species for Figure 1."
 
-# Creating Figure 4: species rank plot
-# This figure ranks the top 20 plant species by mean percent cover
+# Creating a transect-year level dataset for underlying raw points in Figure 4.
+# Each point represents one transect-year mean cover value for that species,
+# showing the distribution of observations behind the overall mean.
+species_rank_raw <- saltmarsh_plants |>
+  group_by(psoc, species_label, cover_category, year, transect_name) |>
+  summarize(mean_pc_obs = mean(mean_pc, na.rm = TRUE)) |>
+  ungroup() |>
+  # Keeping only species that appear in the top 20
+  filter(psoc %in% species_rank_top20$psoc)
 
-# Setting the x-axis location of the dashed cutoff line
-# This cutoff comes from the 90th percentile of species mean percent cover
+# Setting the x-axis location of the dashed cutoff line from the
+# 90th percentile calculated in the dominant-species-cutoff chunk
 cutoff_x <- dominance_cutoff
 
 fig4 <- ggplot(data = species_rank_top20,
                aes(x = mean_pc,
                    y = reorder(species_label, mean_pc),
                    color = cover_category)) +
-  # Adding points and horizontal error bars for each species
-  # Points show mean percent cover and bars show ± 1 standard error
+  # Faint raw points show the spread of transect-year observations for each species,
+  # so the reader can assess how variable cover is around the mean
+  geom_point(data = species_rank_raw,
+             aes(x = mean_pc_obs,
+                 y = reorder(species_label, mean_pc_obs)),
+             inherit.aes = FALSE,
+             alpha = 0.2,
+             size = 1.5,
+             color = "gray50") +
+  # Pointrange shows the overall mean and ± 1 SE for each species
   geom_pointrange(aes(xmin = mean_pc - se_pc,
                       xmax = mean_pc + se_pc)) +
-  # Adding a dashed vertical line to show the 90th percentile dominance cutoff
+  # Dashed vertical line marks the 90th percentile dominance cutoff;
+  # species to the right of this line were selected as dominant for Figure 1
   geom_vline(xintercept = cutoff_x,
              linetype = "dashed",
              color = "gray50") +
-  # Using green for native species and coral/red for non-native species
-  scale_color_manual(values = c("NATIVE COVER" = "#1D9E75",
+  scale_color_manual(values = c("NATIVE COVER"     = "#1D9E75",
                                 "NON-NATIVE COVER" = "#D85A30")) +
-  # Adding axis labels and legend title
   labs(x = "Mean percent cover (± 1 SE)",
        y = "Species",
        color = "Cover category") +
-  # Using a clean theme for readability
   theme_minimal() +
-  # Italicizing species names and placing the legend below the plot
   theme(axis.text.y = element_text(face = "italic", size = 9),
         legend.position = "bottom",
         legend.title = element_text(face = "bold"))
 
-# Displaying Figure 4
+# Displaying figure 4
 fig4
 ```
 
-The dashed line represents the 75th percentile of mean percent cover across all species in the filtered dataset. Species to the right of this line were classified as dominant because their average cover was higher than at least 75% of recorded plant species. This gives the dominant-species selection a clearer mathematical basis than choosing a visual cutoff by eye.
+The dashed line represents the 90th percentile of mean percent cover across all species in the filtered dataset. Species to the right of this line were classified as dominant because their average cover exceeds that of at least 90% of all recorded plant species. This gives the dominant-species selection a clear mathematical basis rather than relying on a visual cutoff chosen by eye. Faint gray points behind each pointrange show the individual transect-year observations, illustrating how variable cover is for each species across sampling events.
 
 # Other exploratory visualizations
 
@@ -493,14 +552,18 @@ The dashed line represents the 75th percentile of mean percent cover across all 
 #| warning: false
 #| fig-height: 6
 #| fig-width: 8
-#| fig-cap: "Total mean percent vegetation cover (native + non-native combined) in salt marsh habitat at NCOS across survey years. Shaded band represents ± 1 standard error around the mean."
+#| fig-cap: "Total mean percent vegetation cover (native + non-native combined) in salt marsh habitat at NCOS across survey years. Faint points show transect-level observations (one point per transect-year); the line connects yearly means; the shaded band represents ± 1 standard error around the mean. A warm amber color is used because this figure combines native and non-native cover rather than representing either group alone."
 
-# Creating Figure 5: total vegetation cover across survey years
+# Creating Figure 5: total vegetation cover (native + non-native) across survey years.
+# Using a warm amber (#C4820A) rather than the green or coral used for individual
+# cover categories, because this figure combines both groups and should not visually
+# suggest association with either native or non-native cover alone.
+
 fig5 <- ggplot(data = total_cover,
                aes(x = year,
                    y = mean_total)) +
-  # Adding faint points to show underlying transect-level observations
-  # Each point represents total native + non-native vegetation cover within one transect-year
+  # Faint jittered points show the transect-level total cover observations;
+  # each point is one transect-year's combined native + non-native cover
   geom_point(data = total_cover_points,
              aes(x = year,
                  y = total_pc),
@@ -508,27 +571,25 @@ fig5 <- ggplot(data = total_cover,
              alpha = 0.35,
              size = 1.8,
              position = position_jitter(width = 0.08, height = 0),
-             color = "#6B5B95") +
-  # Adding a shaded ribbon to show ± 1 standard error around yearly mean total cover
+            # Warm amber distinguishes total cover from native (green) and non-native (coral) used in other figures
+             color = "#C4820A") +
+  # Ribbon shows ± 1 SE around the yearly mean
   geom_ribbon(aes(ymin = mean_total - se_total,
                   ymax = mean_total + se_total),
-              fill = "#6B5B95",
+              fill = "#C4820A",
               alpha = 0.2) +
-  # Adding a line to connect yearly mean total vegetation cover through time
-  geom_line(color = "#6B5B95",
+  # Line connects yearly mean total cover values
+  geom_line(color = "#C4820A",
             linewidth = 1) +
-  # Adding larger points to show yearly mean total vegetation cover values
-  geom_point(color = "#6B5B95",
+  # Larger points mark the yearly means
+  geom_point(color = "#C4820A",
              size = 3) +
-  # Adding axis labels
   labs(x = "Survey year",
        y = "Total mean percent cover (%)") +
-  # Using a clean theme for readability
   theme_minimal()
 
-# Displaying Figure 5
+# Displaying figure 5
 fig5
-
 ```
 
 # Plan for elective (if completing)
