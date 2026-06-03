@@ -556,6 +556,8 @@ For images, we will use Creative Commons licensed photographs from iNaturalist, 
 
 ![Crossword draft](images/crossword.png)
 
+![Species spotlight draft](images/spotlight-species.png)
+
 ## Plan for the next two weeks 
 
 Over the next two weeks, we will use our preliminary analysis to select the species featured in the magazine. We will also continue revising our figures so the main results are clear enough to translate into a more visual and accessible format for younger students and community readers.
