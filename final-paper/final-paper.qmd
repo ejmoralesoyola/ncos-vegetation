@@ -2,7 +2,7 @@
 title: "Salt Marsh Vegetation at North Campus Open Space"
 subtitle: "Dominant species, native/non-native cover, and restoration trajectories"
 author: "Macey Hartmann and Erick Morales Oyola"
-date: "10 June 2026"
+date: "8 June 2026"
 bibliography: references.bib
 format: 
   pdf:
